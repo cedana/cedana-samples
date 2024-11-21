@@ -1,0 +1,4 @@
+torch<2.5.0  # PyTorch for backend computation
+transformers
+numpy
+scipy
