@@ -21,7 +21,7 @@ model = AutoModelForCausalLM.from_pretrained(
 model.cuda()
 
 # Sleep for the specified duration
-time.sleep(args.sleep_duration)
+time.sleep(args.sleep)
 
 while True:
     user_input = "some prompt"
