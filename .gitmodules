@@ -1,0 +1,3 @@
+[submodule "gpu_smr/pytorch/nanoGPT"]
+	path = gpu_smr/pytorch/nanoGPT
+	url = git@github.com:cedana/nanoGPT.git
