@@ -12,11 +12,11 @@ pipe.scheduler = DPMSolverMultistepScheduler.from_config(pipe.scheduler.config)
 pipe.enable_model_cpu_offload()
 pipe.enable_vae_slicing()
 
-print("sleeping for 10s at the point to checkpoint")
 
 # generate
 prompt = "Spiderman is surfing. Darth Vader is also surfing and following Spiderman"
-video_frames = pipe(prompt, num_inference_steps=25, num_frames=200).frames
+video_frames = pipe(prompt, num_inference_steps=25).frames
+video_frames = [np.array(frame) for frame in video_frames[0]]
 
 # convent to video
 video_path = export_to_video(video_frames)
