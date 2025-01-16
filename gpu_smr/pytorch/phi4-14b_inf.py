@@ -15,7 +15,7 @@ parser.add_argument(
 args = parser.parse_args()
 
 # Load the tokenizer and model
-tokenizer = AutoTokenizer.from_pretrained("stabilityai/stablelm-2-1_6b")
+tokenizer = AutoTokenizer.from_pretrained("microsoft/phi-4")
 model = AutoModelForCausalLM.from_pretrained(
     "microsoft/phi-4",
     torch_dtype="auto",
