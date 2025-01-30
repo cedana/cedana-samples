@@ -6,47 +6,51 @@ if [ -z "$1" ]; then
     exit 1
 fi
 
-JOB_ID=$1
+# Load the bash_loading_animations library
+# Replace /path/to/bash_loading_animations.sh with the actual path to the library
+source bash_loading_animations.sh
 
-spinner() {
-    local pid=$1
-    local delay=0.1
-    local spinstr='|/-\'
-    while [ "$(ps a | awk '{print $1}' | grep $pid)" ]; do
-        local temp=${spinstr#?}
-        printf " [%c]  " "$spinstr"
-        local spinstr=$temp${spinstr%"$temp"}
-        sleep $delay
-        printf "\b\b\b\b\b\b"
-    done
-    printf "    \b\b\b\b"
+# Function to clean up and stop the loading animation on script exit or interrupt
+cleanup() {
+    BLA::stop_loading_animation
+    exit
 }
+
+# Trap SIGINT (Ctrl+C) and call the cleanup function
+trap cleanup SIGINT
+
+JOB_ID=$1
 
 # Function to check for checkpoint and restore
 check_and_restore() {
+    # Print the initial message and start the spinner
+
+    # Start the loading animation
+    BLA::start_loading_animation "${BLA_football[@]}"
+
     while true; do
         # Get the checkpoint list for the given job ID
         CHECKPOINT_LIST=$(cedana checkpoint list "$JOB_ID")
 
         # Check if the checkpoint list contains any checkpoint
         if echo "$CHECKPOINT_LIST" | grep -q "MiB"; then
+            # Stop the loading animation
+            BLA::stop_loading_animation
+
             # Extract the checkpoint ID from the list
             CHECKPOINT_ID=$(echo "$CHECKPOINT_LIST" | awk 'NR==2 {print $1}')
 
             # Restore the checkpoint
-            echo "Checkpoint detected with ID: $CHECKPOINT_ID"
+            echo -e "\nCheckpoint detected with ID: $CHECKPOINT_ID"
             echo "Restoring checkpoint..."
-            cedana restore job "$CHECKPOINT_ID" -a
+            cedana restore job "$JOB_ID" -a
 
             # Exit the loop after restoring
             break
-        else
-            echo "No checkpoint found for job ID: $JOB_ID. Retrying in 5 seconds..."
-            cedana ps >/dev/null
-            sleep 5 &
-            spinner $!
-            echo
         fi
+
+        # Sleep briefly to avoid hammering the CPU
+        sleep 1
     done
 }
 
