@@ -8,6 +8,20 @@ fi
 
 JOB_ID=$1
 
+spinner() {
+    local pid=$1
+    local delay=0.1
+    local spinstr='|/-\'
+    while [ "$(ps a | awk '{print $1}' | grep $pid)" ]; do
+        local temp=${spinstr#?}
+        printf " [%c]  " "$spinstr"
+        local spinstr=$temp${spinstr%"$temp"}
+        sleep $delay
+        printf "\b\b\b\b\b\b"
+    done
+    printf "    \b\b\b\b"
+}
+
 # Function to check for checkpoint and restore
 check_and_restore() {
     while true; do
@@ -28,7 +42,10 @@ check_and_restore() {
             break
         else
             echo "No checkpoint found for job ID: $JOB_ID. Retrying in 5 seconds..."
-            sleep 5
+            cedana ps >/dev/null
+            sleep 5 &
+            spinner $!
+            echo
         fi
     done
 }
