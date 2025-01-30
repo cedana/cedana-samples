@@ -31,6 +31,8 @@ check_and_restore() {
     while true; do
         # Get the checkpoint list for the given job ID
         CHECKPOINT_LIST=$(cedana checkpoint list "$JOB_ID")
+        # sync w/ db
+        cedana ps > /dev/null
 
         # Check if the checkpoint list contains any checkpoint
         if echo "$CHECKPOINT_LIST" | grep -q "MiB"; then
