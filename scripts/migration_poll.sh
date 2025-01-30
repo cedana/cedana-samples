@@ -22,7 +22,7 @@ check_and_restore() {
             # Restore the checkpoint
             echo "Checkpoint detected with ID: $CHECKPOINT_ID"
             echo "Restoring checkpoint..."
-            cedana restore "$CHECKPOINT_ID"
+            cedana restore job "$CHECKPOINT_ID" -a
 
             # Exit the loop after restoring
             break
