@@ -43,6 +43,7 @@ check_and_restore() {
             CHECKPOINT_ID=$(echo "$CHECKPOINT_LIST" | awk 'NR==2 {print $1}')
 
             # Restore the checkpoint
+            sleep 15
             echo -e "\nCheckpoint detected with ID: $CHECKPOINT_ID"
             echo "Restoring checkpoint..."
             cedana restore job "$JOB_ID" -a
