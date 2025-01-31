@@ -38,7 +38,7 @@ check_and_restore() {
         cedana ps > /dev/null
 
         # Check if the checkpoint list contains any checkpoint
-        if echo "$CHECKPOINT_LIST" | grep -q "MiB"; then
+        if echo "$CHECKPOINT_LIST" | grep -q "dump"; then
             # Stop the loading animation
             BLA::stop_loading_animation
 
@@ -50,7 +50,7 @@ check_and_restore() {
             echo "Waiting for instance to become unreachable..."
 
             while nc -z -w 2 "$INSTANCE_IP" 22; do
-                sleep 2
+                sleep 1
             done
 
             echo "Instance is unreachable. Restoring checkpoint..."
