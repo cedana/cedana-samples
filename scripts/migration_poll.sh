@@ -46,18 +46,19 @@ check_and_restore() {
             CHECKPOINT_ID=$(echo "$CHECKPOINT_LIST" | awk 'NR==2 {print $1}')
 
             # Wait for instance to die before restoring
-            echo -e "\nCheckpoint detected with ID: $CHECKPOINT_ID"
-            echo "Waiting for instance to become unreachable..."
             FILE="/root/shared-mount/dump-process-${JOB_ID}.tar"
 
             while [[ ! -f "$FILE" ]]; do
-                sleep 1  # Wait for 1 second before checking again
+                sleep 0.5  # Wait for 1 second before checking again
             done
 
             cp -r "$FILE" "/root/dump-process-${JOB_ID}.tar"
+            echo -e "\nCheckpoint detected with ID: $CHECKPOINT_ID"
+            echo "Waiting for instance to become unreachable..."
+
 
             while nc -z -w 2 "$INSTANCE_IP" 22; do
-                sleep 1
+                sleep 0.5
             done
 
             echo "Instance is unreachable. Restoring checkpoint..."
