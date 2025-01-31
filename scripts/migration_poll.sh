@@ -39,10 +39,7 @@ check_and_restore() {
 
         # Check if the checkpoint list contains any checkpoint
         if echo "$CHECKPOINT_LIST" | grep -q "dump"; then
-            # Stop the loading animation
-            BLA::stop_loading_animation
-
-            # Extract the checkpoint ID from the list
+                        # Extract the checkpoint ID from the list
             CHECKPOINT_ID=$(echo "$CHECKPOINT_LIST" | awk 'NR==2 {print $1}')
 
             # Wait for instance to die before restoring
@@ -53,14 +50,20 @@ check_and_restore() {
             done
 
             cp -r "$FILE" "/root/dump-process-${JOB_ID}.tar"
+            # Stop the loading animation
+            BLA::stop_loading_animation
+
+
             echo -e "\nCheckpoint detected with ID: $CHECKPOINT_ID"
             echo "Waiting for instance to become unreachable..."
 
+            BLA::start_loading_animation "${BLA_bomb[@]}"
 
             while nc -z -w 2 "$INSTANCE_IP" 22; do
-                sleep 0.5
+                sleep 0.1
             done
 
+            BLA::stop_loading_animation
             echo "Instance is unreachable. Restoring checkpoint..."
             cedana restore job "$JOB_ID" -a --tcp-close
 
