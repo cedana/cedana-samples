@@ -61,7 +61,7 @@ check_and_restore() {
             done
 
             echo "Instance is unreachable. Restoring checkpoint..."
-            cedana restore job "$JOB_ID" -a
+            cedana restore job "$JOB_ID" -a --tcp-close
 
             # Exit after restoring
             break
