@@ -48,7 +48,7 @@ check_and_restore() {
             # Wait for instance to die before restoring
             echo -e "\nCheckpoint detected with ID: $CHECKPOINT_ID"
             echo "Waiting for instance to become unreachable..."
-            sleep 5
+            sleep 30
             cp -r /root/shared-mount/dump-process-"$JOB_ID".tar /root/dump-process-"$JOB_ID".tar
 
             while nc -z -w 2 "$INSTANCE_IP" 22; do
