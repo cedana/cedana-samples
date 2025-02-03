@@ -8,3 +8,5 @@ wandb
 tiktoken
 datasets
 sentencepiece
+datasets[audio]
+accelerate

@@ -50,14 +50,9 @@ check_and_restore() {
             done
 
             cp -r "$FILE" "/root/dump-process-${JOB_ID}.tar"
-            # Stop the loading animation
-            BLA::stop_loading_animation
-
 
             echo -e "\nCheckpoint detected with ID: $CHECKPOINT_ID"
             echo "Waiting for instance to become unreachable..."
-
-            BLA::start_loading_animation "${BLA_bouncing_ball[@]}"
 
             while nc -z -w 2 "$INSTANCE_IP" 22; do
                 sleep 0.1
