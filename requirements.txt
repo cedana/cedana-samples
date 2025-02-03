@@ -10,3 +10,4 @@ datasets
 sentencepiece
 datasets[audio]
 accelerate
+nemo_toolkit['all']
