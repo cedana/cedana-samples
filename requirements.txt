@@ -11,3 +11,5 @@ sentencepiece
 datasets[audio]
 accelerate
 nemo_toolkit['all']
+pyannote.metrics
+lightning

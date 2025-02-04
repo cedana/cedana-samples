@@ -9,7 +9,7 @@ if [ -z "$1" ]; then
 fi
 
 INSTANCE_A="ubuntu@216.86.162.76"
-INSTANCE_IP="${INSTANCE_A#*@}"  # Extract IP from user@host format
+INSTANCE_IP="${INSTANCE_A#*@}" # Extract IP from user@host format
 
 # Load the bash_loading_animations library
 # Replace /path/to/bash_loading_animations.sh with the actual path to the library
@@ -35,31 +35,28 @@ check_and_restore() {
         # Get the checkpoint list for the given job ID
         CHECKPOINT_LIST=$(cedana checkpoint list "$JOB_ID")
         # Sync with DB
-        cedana ps > /dev/null
+        cedana ps >/dev/null
 
         # Check if the checkpoint list contains any checkpoint
         if echo "$CHECKPOINT_LIST" | grep -q "dump"; then
-                        # Extract the checkpoint ID from the list
+            # Extract the checkpoint ID from the list
             CHECKPOINT_ID=$(echo "$CHECKPOINT_LIST" | awk 'NR==2 {print $1}')
 
             # Wait for instance to die before restoring
             FILE="/root/shared-mount/dump-process-${JOB_ID}.tar"
 
             while [[ ! -f "$FILE" ]]; do
-                sleep 0.5  # Wait for 1 second before checking again
+                sleep 0.5 # Wait for 1 second before checking again
             done
 
             cp -r "$FILE" "/root/dump-process-${JOB_ID}.tar"
-
             echo -e "\nCheckpoint detected with ID: $CHECKPOINT_ID"
-            echo "Waiting for instance to become unreachable..."
 
             while nc -z -w 2 "$INSTANCE_IP" 22; do
                 sleep 0.1
             done
 
             BLA::stop_loading_animation
-            echo "Instance is unreachable. Restoring checkpoint..."
             cedana restore job "$JOB_ID" -a --tcp-close
 
             # Exit after restoring
