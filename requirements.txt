@@ -10,6 +10,6 @@ datasets
 sentencepiece
 datasets[audio]
 accelerate
-nemo_toolkit['all']
+nemo_toolkit[all]
 pyannote.metrics
 lightning
