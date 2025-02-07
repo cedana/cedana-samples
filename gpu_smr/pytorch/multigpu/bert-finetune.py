@@ -26,31 +26,46 @@ def train(rank, world_size, model, tokenizer, dataset, epochs=3):
     model = model.to(rank)
     model = DDP(model, device_ids=[rank])
 
+    # Tokenize the dataset
+    def tokenize_function(examples):
+        return tokenizer(examples['text'], padding="max_length", truncation=True, max_length=512)
+
+    tokenized_dataset = dataset.map(tokenize_function, batched=True)
+
     # Create a DistributedSampler to handle data partitioning
-    sampler = DistributedSampler(dataset, num_replicas=world_size, rank=rank)
-    dataloader = DataLoader(dataset, batch_size=16, sampler=sampler)
+    sampler = DistributedSampler(tokenized_dataset, num_replicas=world_size, rank=rank)
+    dataloader = DataLoader(tokenized_dataset, batch_size=16, sampler=sampler)
 
     optimizer = AdamW(model.parameters(), lr=5e-5)
 
     model.train()
     for epoch in range(epochs):
         sampler.set_epoch(epoch)
-        for batch in dataloader:
+        for i, batch in enumerate(dataloader):
             optimizer.zero_grad()
-            inputs = tokenizer(batch['text'], return_tensors='pt', padding=True, truncation=True)
-            inputs = {k: v.to(rank) for k, v in inputs.items()}
+            inputs = {k: v.to(rank) for k, v in batch.items() if k != 'label'}
             labels = batch['label'].to(rank)
             outputs = model(**inputs, labels=labels)
             loss = outputs.loss
             loss.backward()
             optimizer.step()
-            if rank == 0:
-                print(f"Epoch {epoch}, Loss: {loss.item()}")
+            if rank == 0 and i % 10 == 0:  # Log every 10 batches
+                print(f"Epoch {epoch}, Batch {i}, Loss: {loss.item()}")
+
+    # Save the model on rank 0
+    if rank == 0:
+        model_save_path = "fine_tuned_model"
+        model.module.save_pretrained(model_save_path)
+        tokenizer.save_pretrained(model_save_path)
+        print(f"Model saved to {model_save_path}")
 
     cleanup()
 
 if __name__ == "__main__":
     world_size = torch.cuda.device_count()
+    if world_size < 2:
+        raise RuntimeError("This script requires at least 2 GPUs to run.")
+
     model_name = "bert-base-uncased"
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     model = AutoModelForSequenceClassification.from_pretrained(model_name, num_labels=2)
