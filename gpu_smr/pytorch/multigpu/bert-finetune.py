@@ -32,6 +32,9 @@ def train(rank, world_size, model, tokenizer, dataset, epochs=3):
 
     tokenized_dataset = dataset.map(tokenize_function, batched=True)
 
+    # Convert the dataset to PyTorch tensors
+    tokenized_dataset.set_format(type='torch', columns=['input_ids', 'attention_mask', 'label'])
+
     # Create a DistributedSampler to handle data partitioning
     sampler = DistributedSampler(tokenized_dataset, num_replicas=world_size, rank=rank)
     dataloader = DataLoader(tokenized_dataset, batch_size=16, sampler=sampler)
@@ -43,7 +46,10 @@ def train(rank, world_size, model, tokenizer, dataset, epochs=3):
         sampler.set_epoch(epoch)
         for i, batch in enumerate(dataloader):
             optimizer.zero_grad()
-            inputs = {k: v.to(rank) for k, v in batch.items() if k != 'label'}
+            inputs = {
+                'input_ids': batch['input_ids'].to(rank),
+                'attention_mask': batch['attention_mask'].to(rank)
+            }
             labels = batch['label'].to(rank)
             outputs = model(**inputs, labels=labels)
             loss = outputs.loss
