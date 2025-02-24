@@ -13,3 +13,4 @@ accelerate
 nemo_toolkit[all]
 pyannote.metrics
 lightning
+letta 
