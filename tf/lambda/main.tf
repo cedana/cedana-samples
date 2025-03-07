@@ -7,12 +7,11 @@ terraform {
 }
 
 provider "lambdalabs" {
-  # Or use `LAMBDALABS_API_KEY`
   api_key = "LAMBDALABS_API_KEY"
 }
 
 variable "instances" {
-  default = ["instance-a", "instance-b"]
+  default = ["cedana-demo-a", "cedana-demo-b"]
 }
 
 resource "lambdalabs_instance" "demo_instance" {

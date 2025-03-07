@@ -1,42 +1,79 @@
 #!/bin/bash
+set -e
 
-## Install drivers
-## Install nvidia driver
+## --------------------
+## Setup and env var check
+## --------------------
+
+# Check if CEDANA_URL and CEDANA_AUTH_TOKEN are set
+if [[ -z "$CEDANA_URL" ]] || [[ -z "$CEDANA_AUTH_TOKEN" ]]; then
+    echo "CEDANA_URL and CEDANA_AUTH_TOKEN must be set."
+    exit 1
+fi
+
+## --------------------
+## Install nvidia driver/s
+## --------------------
+DRIVER_VERSION="550"
+if command -v nvidia-smi &>/dev/null; then
+    INSTALLED_VERSION=$(nvidia-smi --query-gpu=driver_version --format=csv,noheader | cut -d. -f1)
+    if [[ "$INSTALLED_VERSION" == "$DRIVER_VERSION" ]]; then
+        echo "NVIDIA driver ${DRIVER_VERSION} is already installed."
+        exit 0
+    else
+        echo "Different NVIDIA driver version detected (${INSTALLED_VERSION}). Updating..."
+    fi
+fi
+
+echo "Installing NVIDIA driver ${DRIVER_VERSION}..."
+sudo apt-get update
+sudo apt-get install -y "nvidia-driver-${DRIVER_VERSION}"
+
+echo "NVIDIA driver ${DRIVER_VERSION} installed successfully."
+
 sudo apt-get update && sudo apt-get install -y nvidia-driver-550
+echo "Nvidia driver installed successfully."
 
+## --------------------
 ## Install criu prereqs
-sudo apt-get update && sudo apt-get install libnet1-dev libprotobuf-dev libprotobuf-c-dev protobuf-c-compiler protobuf-compiler python3-protobuf
+## --------------------
+sudo apt-get update && sudo apt-get install -y libnet1-dev libprotobuf-dev libprotobuf-c-dev protobuf-c-compiler protobuf-compiler python3-protobuf
+echo "CRIU prereqs installed successfully."
 
 ## Download and install go
 curl -L https://go.dev/dl/go1.23.5.linux-amd64.tar.gz -o go1.23.5.linux-amd64.tar.gz
 sudo tar -C /usr/local -xzf go1.23.5.linux-amd64.tar.gz
-echo "export PATH=$PATH:/usr/local/go/bin" >>~/.bashrc
-source ~/.bashrc
+export PATH=$PATH:/usr/local/go/bin
 
-## Download cedana
+if ! grep -q "/usr/local/go/bin" ~/.bashrc; then
+    echo 'export PATH=$PATH:/usr/local/go/bin' >>~/.bashrc
+fi
+
+echo "Go ${GO_VERSION} installed successfully."
+
+## --------------------
+## Download and install cedana & plugins
+## --------------------
 git clone https://github.com/cedana/cedana.git
-
-## Checkout stable version
 ## FIXME - grab release/s from endpoint here
 pushd cedana || exit
 git checkout v0.9.240
 make && make install-systemd
+
+cedana plugin install criu gpu streamer
 popd || exit
 
-## Install samples reqs
+## --------------------
+## Install cedana samples
+## --------------------
 pushd cedana-samples || exit
 sudo apt-get install -y python3-venv
 python3 -m venv venv
 pip install -r requirements.txt
 popd || exit
 
-## Install s3fs
-sudo apt install -y s3fs
+## --------------------
+## Validate that everything is operational
+## --------------------
 
-# get cedana plugins
-# FIXME - install specific release versions here
-cedana plugin install criu gpu streamer
-
-# validate no error from cedana check
-# TODO - check for errors
-cedana daemon check --full
+# cedana daemon check --full, after reflection check has merged
