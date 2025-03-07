@@ -1,0 +1,42 @@
+#!/bin/bash
+
+## Install drivers
+## Install nvidia driver
+sudo apt-get update && sudo apt-get install -y nvidia-driver-550
+
+## Install criu prereqs
+sudo apt-get update && sudo apt-get install libnet1-dev libprotobuf-dev libprotobuf-c-dev protobuf-c-compiler protobuf-compiler python3-protobuf
+
+## Download and install go
+curl -L https://go.dev/dl/go1.23.5.linux-amd64.tar.gz -o go1.23.5.linux-amd64.tar.gz
+sudo tar -C /usr/local -xzf go1.23.5.linux-amd64.tar.gz
+echo "export PATH=$PATH:/usr/local/go/bin" >>~/.bashrc
+source ~/.bashrc
+
+## Download cedana
+git clone https://github.com/cedana/cedana.git
+
+## Checkout stable version
+## FIXME - grab release/s from endpoint here
+pushd cedana || exit
+git checkout v0.9.240
+make && make install-systemd
+popd || exit
+
+## Install samples reqs
+pushd cedana-samples || exit
+sudo apt-get install -y python3-venv
+python3 -m venv venv
+pip install -r requirements.txt
+popd || exit
+
+## Install s3fs
+sudo apt install -y s3fs
+
+# get cedana plugins
+# FIXME - install specific release versions here
+cedana plugin install criu gpu streamer
+
+# validate no error from cedana check
+# TODO - check for errors
+cedana daemon check --full
