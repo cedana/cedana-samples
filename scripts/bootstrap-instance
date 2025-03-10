@@ -14,32 +14,38 @@ if [[ -z "$CEDANA_URL" ]] || [[ -z "$CEDANA_AUTH_TOKEN" ]]; then
 fi
 
 ## --------------------
+## Versions
+## --------------------
+DRIVER_VERSION="550"
+GO_VERSION="1.23.5"
+CEDANA_VERSION="v0.9.241"
+## --------------------
 ## Install nvidia driver/s
 ## --------------------
 DRIVER_VERSION="550"
 if command -v nvidia-smi &>/dev/null; then
     INSTALLED_VERSION=$(nvidia-smi --query-gpu=driver_version --format=csv,noheader | cut -d. -f1)
     if [[ "$INSTALLED_VERSION" == "$DRIVER_VERSION" ]]; then
-        echo "NVIDIA driver ${DRIVER_VERSION} is already installed."
+        echo "NVIDIA driver ${DRIVER_VERSION} is already installed." # continue and skip
     else
         echo "Different NVIDIA driver version detected (${INSTALLED_VERSION}). Updating..."
     fi
 fi
 
-echo "Installing NVIDIA driver ${DRIVER_VERSION}..."
+echo "### Installing NVIDIA driver ${DRIVER_VERSION}..."
 sudo apt-get update
 sudo apt-get install -y "nvidia-driver-${DRIVER_VERSION}"
 
-echo "NVIDIA driver ${DRIVER_VERSION} installed successfully."
+echo "### NVIDIA driver ${DRIVER_VERSION} installed successfully. ###"
 
 sudo apt-get update && sudo apt-get install -y nvidia-driver-550
-echo "Nvidia driver installed successfully."
+echo "### Nvidia driver installed successfully. ###"
 
 ## --------------------
 ## Install criu prereqs
 ## --------------------
 sudo apt-get update && sudo apt-get install -y libnet1-dev libprotobuf-dev libprotobuf-c-dev protobuf-c-compiler protobuf-compiler python3-protobuf
-echo "CRIU prereqs installed successfully."
+echo "### CRIU prereqs installed successfully."
 
 ## Download and install go
 curl -L https://go.dev/dl/go1.23.5.linux-amd64.tar.gz -o go1.23.5.linux-amd64.tar.gz
@@ -50,15 +56,15 @@ if ! grep -q "/usr/local/go/bin" ~/.bashrc; then
     echo 'export PATH=$PATH:/usr/local/go/bin' >>~/.bashrc
 fi
 
-echo "Go ${GO_VERSION} installed successfully."
+echo "### Go ${GO_VERSION} installed successfully. ##"
 
 ## --------------------
 ## Download and install cedana & plugins
 ## --------------------
-git clone https://github.com/cedana/cedana.git
+rm -rf cedana && git clone https://github.com/cedana/cedana.git
 ## FIXME - grab release/s from endpoint here
 pushd cedana || exit
-git checkout v0.9.240
+git checkout ${CEDANA_VERSION}
 make && make install-systemd
 
 cedana plugin install criu gpu streamer
@@ -77,4 +83,4 @@ popd || exit
 ## Validate that everything is operational
 ## --------------------
 
-# cedana daemon check --full, after reflection check has merged
+# cedana daemon check --full
