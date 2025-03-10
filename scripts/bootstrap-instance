@@ -5,6 +5,8 @@ set -e
 ## Setup and env var check
 ## --------------------
 
+echo "Setting up remote cedana instance..."
+
 # Check if CEDANA_URL and CEDANA_AUTH_TOKEN are set
 if [[ -z "$CEDANA_URL" ]] || [[ -z "$CEDANA_AUTH_TOKEN" ]]; then
     echo "CEDANA_URL and CEDANA_AUTH_TOKEN must be set."

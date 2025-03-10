@@ -30,8 +30,7 @@ resource "lambdalabs_instance" "demo_instance" {
   provisioner "remote-exec" {
     inline = [
       "git clone https://github.com/cedana/cedana-samples.git",
-      "cd cedana-samples/scripts",
-      "./bootstrap-instance"
+      "./cedana-samples/scripts/bootstrap-instance"
     ]
   }
 }
