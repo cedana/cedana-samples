@@ -21,7 +21,6 @@ if command -v nvidia-smi &>/dev/null; then
     INSTALLED_VERSION=$(nvidia-smi --query-gpu=driver_version --format=csv,noheader | cut -d. -f1)
     if [[ "$INSTALLED_VERSION" == "$DRIVER_VERSION" ]]; then
         echo "NVIDIA driver ${DRIVER_VERSION} is already installed."
-        exit 0
     else
         echo "Different NVIDIA driver version detected (${INSTALLED_VERSION}). Updating..."
     fi
