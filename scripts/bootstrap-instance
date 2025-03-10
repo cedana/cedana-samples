@@ -56,7 +56,7 @@ if ! grep -q "/usr/local/go/bin" ~/.bashrc; then
     echo 'export PATH=$PATH:/usr/local/go/bin' >>~/.bashrc
 fi
 
-echo "### Go ${GO_VERSION} installed successfully. ##"
+echo "### Go ${GO_VERSION} installed successfully. ###"
 
 ## --------------------
 ## Download and install cedana & plugins
@@ -74,7 +74,7 @@ popd || exit
 ## Install cedana samples
 ## --------------------
 pushd cedana-samples || exit
-sudo apt-get install -y python3-venv
+sudo apt-get install -y python3-venv python3-pip
 python3 -m venv venv
 pip install -r requirements.txt
 popd || exit
