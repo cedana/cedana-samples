@@ -7,6 +7,8 @@ set -e
 
 echo "Setting up remote cedana instance..."
 
+source /etc/environment
+
 # Check if CEDANA_URL and CEDANA_AUTH_TOKEN are set
 if [[ -z "$CEDANA_URL" ]] || [[ -z "$CEDANA_AUTH_TOKEN" ]]; then
     echo "CEDANA_URL and CEDANA_AUTH_TOKEN must be set."
@@ -54,6 +56,7 @@ sudo apt-get update && sudo apt-get install -y libnet1-dev libprotobuf-dev libpr
 echo "### CRIU prereqs installed successfully."
 
 ## Download and install go
+echo "### Installing Go ${GO_VERSION}..."
 curl -L https://go.dev/dl/go1.23.5.linux-amd64.tar.gz -o go1.23.5.linux-amd64.tar.gz
 sudo tar -C /usr/local -xzf go1.23.5.linux-amd64.tar.gz
 export PATH=$PATH:/usr/local/go/bin
@@ -67,6 +70,7 @@ echo "### Go ${GO_VERSION} installed successfully. ###"
 ## --------------------
 ## Download and install cedana & plugins
 ## --------------------
+echo "### Installing and starting cedana... ###"
 rm -rf cedana && git clone https://github.com/cedana/cedana.git
 ## FIXME - grab release/s from endpoint here
 pushd cedana || exit
@@ -79,6 +83,7 @@ popd || exit
 ## --------------------
 ## Install cedana samples
 ## --------------------
+echo "### Installing cedana samples dependencies... ###"
 pushd cedana-samples || exit
 sudo apt-get install -y python3-venv python3-pip
 python3 -m venv venv
@@ -97,8 +102,9 @@ echo '{"Full": true}' | grpc-client-cli -service daemon.Daemon -method HealthChe
 ## --------------------
 ## Set up s3fs
 ## --------------------
+echo "### Setting up s3fs... ###"
 sudo apt install s3fs
 echo "${AWS_ACCESS_KEY_ID}:${AWS_SECRET_ACCESS_KEY}" >~/.passwd-s3fs
 chmod 600 ~/.passwd-s3fs
 sudo mkdir -p /mnt/s3
-s3fs demo-bucket /mnt/s3 -o passwd_file=${HOME}/.passwd-s3fs
+s3fs demo-bucket /mnt/s3 -o passwd_file=~/.passwd-s3fs
