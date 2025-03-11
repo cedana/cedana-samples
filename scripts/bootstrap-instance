@@ -13,6 +13,12 @@ if [[ -z "$CEDANA_URL" ]] || [[ -z "$CEDANA_AUTH_TOKEN" ]]; then
     exit 1
 fi
 
+# Check for AWS creds
+if [[ -z "$AWS_ACCESS_KEY_ID" ]] || [[ -z "$AWS_SECRET_ACCESS_KEY" ]]; then
+    echo "AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY must be set."
+    exit 1
+fi
+
 ## --------------------
 ## Versions
 ## --------------------
@@ -65,9 +71,9 @@ rm -rf cedana && git clone https://github.com/cedana/cedana.git
 ## FIXME - grab release/s from endpoint here
 pushd cedana || exit
 git checkout ${CEDANA_VERSION}
-make && make install-systemd
-
-cedana plugin install criu gpu streamer
+make
+sudo cedana daemon start --protocol TCP
+sudo cedana plugin install criu gpu streamer
 popd || exit
 
 ## --------------------
@@ -82,5 +88,17 @@ popd || exit
 ## --------------------
 ## Validate that everything is operational
 ## --------------------
+echo '{"Full": true}' | grpc-client-cli -service daemon.Daemon -method HealthCheck localhost:8080 | jq '[
+  .Results[].Components[] |
+  select(.Errors != []) |
+  {Component: .Name, Errors: .Errors}
+] | if length == 0 then "No errors found" else . end'
 
-# cedana daemon check --full
+## --------------------
+## Set up s3fs
+## --------------------
+sudo apt install s3fs
+echo "${AWS_ACCESS_KEY_ID}:${AWS_SECRET_ACCESS_KEY}" >~/.passwd-s3fs
+chmod 600 ~/.passwd-s3fs
+sudo mkdir -p /mnt/s3
+s3fs demo-bucket /mnt/s3 -o passwd_file=${HOME}/.passwd-s3fs

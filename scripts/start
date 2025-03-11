@@ -1,0 +1,3 @@
+#!/bin/bash
+
+## Quick script to start daemon on node bootup (manually!)
