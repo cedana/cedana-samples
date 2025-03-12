@@ -116,4 +116,4 @@ sudo mkdir -p /mnt/s3
 ## Copy start script to root dir
 ## --------------------
 echo "### Copying start script to root dir... ###"
-cp start.sh /root/start.sh
+cp start /root/start.sh
