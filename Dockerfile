@@ -19,14 +19,6 @@ RUN apt-get update && apt-get install -y \
     python3 \
     python3-venv \
     python3-pip \
-    jq \
-    libnet1-dev \
-    libprotobuf-dev \
-    libprotobuf-c-dev \
-    protobuf-c-compiler \
-    protobuf-compiler \
-    python3-protobuf \
-    && rm -rf /var/lib/apt/lists/*
 
 # Create app directory
 WORKDIR /app
@@ -35,8 +27,6 @@ WORKDIR /app
 COPY requirements.txt .
 
 # Set up Python virtual environment and install dependencies
-RUN python3 -m venv /app/venv
-ENV PATH="/app/venv/bin:$PATH"
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Create directory for workloads
