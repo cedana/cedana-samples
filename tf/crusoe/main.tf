@@ -6,15 +6,6 @@ terraform {
   }
 }
 
-locals {
-  my_ssh_key = file("~/.ssh/laptop-keypair.pub")
-}
-
-variable "instance_names" {
-  type    = list(string)
-  default = ["cedana-demo-a", "cedana-demo-b"]
-}
-
 
 resource "crusoe_compute_instance" "cedana_demo" {
   for_each = toset(var.instance_names)
@@ -23,20 +14,24 @@ resource "crusoe_compute_instance" "cedana_demo" {
   type     = "a40.1x"
   location = "us-northcentral1-a"
 
-  image = "ubuntu22.04:latest"
+  image   = "ubuntu22.04:latest"
+  ssh_key = file(var.ssh_key)
 
-  ssh_key        = local.my_ssh_key
   startup_script = <<-EOF
   #!/bin/bash
   set -e  # Exit on error
 
-  echo "export CEDANA_URL='${var.cedana_url}'" >> /etc/environment
-  echo "export CEDANA_AUTH_TOKEN='${var.cedana_auth_token}'" >> /etc/environment
-  echo "export AWS_ACCESS_KEY_ID='${var.aws_access_key_id}'" >> /etc/environment
-  echo "export AWS_SECRET_ACCESS_KEY='${var.aws_secret_access_key}'" >> /etc/environment
+  # Write environment variables to /etc/environment
+  echo "CEDANA_URL='${var.cedana_url}'" >> /etc/environment
+  echo "CEDANA_AUTH_TOKEN='${var.cedana_auth_token}'" >> /etc/environment
+  echo "AWS_ACCESS_KEY_ID='${var.aws_access_key_id}'" >> /etc/environment
+  echo "AWS_SECRET_ACCESS_KEY='${var.aws_secret_access_key}'" >> /etc/environment
 
-  # Ensure environment variables are loaded
-  source /etc/environment
+  # Reload environment variables
+  export CEDANA_URL="${var.cedana_url}"
+  export CEDANA_AUTH_TOKEN="${var.cedana_auth_token}"
+  export AWS_ACCESS_KEY_ID="${var.aws_access_key_id}"
+  export AWS_SECRET_ACCESS_KEY="${var.aws_secret_access_key}"
 
   # Retry logic for git clone (up to 5 attempts with exponential backoff)
   for i in {1..5}; do
@@ -44,8 +39,8 @@ resource "crusoe_compute_instance" "cedana_demo" {
     echo "Git clone failed, retrying in $((2**i)) seconds..."
     sleep $((2**i))
   done
-EOF
 
+  EOF
 }
 
 output "instance_ips" {

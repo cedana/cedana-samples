@@ -20,3 +20,15 @@ variable "aws_secret_access_key" {
   type        = string
   sensitive   = true
 }
+
+variable "ssh_key" {
+  description = "Path to the SSH public key"
+  type        = string
+  default     = "~/.ssh/laptop-keypair.pub"
+}
+
+variable "instance_names" {
+  description = "List of instance names"
+  type        = list(string)
+  default     = ["cedana-demo-a", "cedana-demo-b"]
+}
