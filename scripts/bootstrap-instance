@@ -11,14 +11,14 @@ source /etc/environment
 
 # Check if CEDANA_URL and CEDANA_AUTH_TOKEN are set
 if [[ -z "$CEDANA_URL" ]] || [[ -z "$CEDANA_AUTH_TOKEN" ]]; then
-    echo "CEDANA_URL and CEDANA_AUTH_TOKEN must be set."
-    exit 1
+  echo "CEDANA_URL and CEDANA_AUTH_TOKEN must be set."
+  exit 1
 fi
 
 # Check for AWS creds
 if [[ -z "$AWS_ACCESS_KEY_ID" ]] || [[ -z "$AWS_SECRET_ACCESS_KEY" ]]; then
-    echo "AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY must be set."
-    exit 1
+  echo "AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY must be set."
+  exit 1
 fi
 
 ## --------------------
@@ -32,12 +32,12 @@ CEDANA_VERSION="v0.9.241"
 ## --------------------
 DRIVER_VERSION="550"
 if command -v nvidia-smi &>/dev/null; then
-    INSTALLED_VERSION=$(nvidia-smi --query-gpu=driver_version --format=csv,noheader | cut -d. -f1)
-    if [[ "$INSTALLED_VERSION" == "$DRIVER_VERSION" ]]; then
-        echo "NVIDIA driver ${DRIVER_VERSION} is already installed." # continue and skip
-    else
-        echo "Different NVIDIA driver version detected (${INSTALLED_VERSION}). Updating..."
-    fi
+  INSTALLED_VERSION=$(nvidia-smi --query-gpu=driver_version --format=csv,noheader | cut -d. -f1)
+  if [[ "$INSTALLED_VERSION" == "$DRIVER_VERSION" ]]; then
+    echo "NVIDIA driver ${DRIVER_VERSION} is already installed." # continue and skip
+  else
+    echo "Different NVIDIA driver version detected (${INSTALLED_VERSION}). Updating..."
+  fi
 fi
 
 echo "### Installing NVIDIA driver ${DRIVER_VERSION}..."
@@ -60,9 +60,10 @@ echo "### Installing Go ${GO_VERSION}..."
 curl -L https://go.dev/dl/go1.23.5.linux-amd64.tar.gz -o go1.23.5.linux-amd64.tar.gz
 sudo tar -C /usr/local -xzf go1.23.5.linux-amd64.tar.gz
 export PATH=$PATH:/usr/local/go/bin
+go env -w GOMODCACHE=$HOME/golang/pkg/mod
 
 if ! grep -q "/usr/local/go/bin" ~/.bashrc; then
-    echo 'export PATH=$PATH:/usr/local/go/bin' >>~/.bashrc
+  echo 'export PATH=$PATH:/usr/local/go/bin' >>~/.bashrc
 fi
 
 echo "### Go ${GO_VERSION} installed successfully. ###"
