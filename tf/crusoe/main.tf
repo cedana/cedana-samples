@@ -40,16 +40,10 @@ resource "crusoe_compute_instance" "cedana_demo" {
 
   # Retry logic for git clone (up to 5 attempts with exponential backoff)
   for i in {1..5}; do
-    git clone --depth 1 https://github.com/cedana/cedana-samples.git && break
+    git clone --depth 1 https://github.com/cedana/cedana-samples.git /root/cedana-samples && break
     echo "Git clone failed, retrying in $((2**i)) seconds..."
     sleep $((2**i))
   done
-
-  # Ensure bootstrap script is executable
-  chmod +x cedana-samples/scripts/bootstrap-instance
-
-  # Run bootstrap script with logging
-  ./cedana-samples/scripts/bootstrap-instance > /var/log/bootstrap.log 2>&1
 EOF
 
 }
