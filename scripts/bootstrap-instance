@@ -107,3 +107,9 @@ sudo apt install s3fs
 echo "${AWS_ACCESS_KEY_ID}:${AWS_SECRET_ACCESS_KEY}" >~/.passwd-s3fs
 chmod 600 ~/.passwd-s3fs
 sudo mkdir -p /mnt/s3
+
+## --------------------
+## Copy start script to root dir
+## --------------------
+echo "### Copying start script to root dir... ###"
+cp start.sh /root/start.sh
