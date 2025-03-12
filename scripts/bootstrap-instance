@@ -8,6 +8,7 @@ set -e
 echo "Setting up remote cedana instance..."
 
 source /etc/environment
+export DEBIAN_FRONTEND=noninteractive
 
 # Check if CEDANA_URL and CEDANA_AUTH_TOKEN are set
 if [[ -z "$CEDANA_URL" ]] || [[ -z "$CEDANA_AUTH_TOKEN" ]]; then
