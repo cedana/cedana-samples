@@ -85,7 +85,7 @@ popd || exit
 ## --------------------
 echo "### Installing cedana samples dependencies... ###"
 pushd cedana-samples || exit
-sudo apt-get install -y python3-venv python3-pip
+sudo apt-get install -y python3-venv python3-pip jq
 python3 -m venv venv
 pip install -r requirements.txt
 popd || exit
@@ -93,6 +93,10 @@ popd || exit
 ## --------------------
 ## Validate that everything is operational
 ## --------------------
+
+# Install grpc-client-cli
+curl -L https://github.com/vadimi/grpc-client-cli/releases/download/v1.22.0/grpc-client-cli_linux_x86_64.tar.gz | sudo tar -C /usr/local/bin -xz
+
 echo '{"Full": true}' | grpc-client-cli -service daemon.Daemon -method HealthCheck localhost:8080 | jq '[
   .Results[].Components[] |
   select(.Errors != []) |
