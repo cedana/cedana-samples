@@ -26,12 +26,14 @@ resource "crusoe_compute_instance" "cedana_demo" {
   echo "CEDANA_AUTH_TOKEN='${var.cedana_auth_token}'" >> /etc/environment
   echo "AWS_ACCESS_KEY_ID='${var.aws_access_key_id}'" >> /etc/environment
   echo "AWS_SECRET_ACCESS_KEY='${var.aws_secret_access_key}'" >> /etc/environment
+  echo "CEDANA_REMOTE=true" >> /etc/environment
 
   # Reload environment variables
   export CEDANA_URL="${var.cedana_url}"
   export CEDANA_AUTH_TOKEN="${var.cedana_auth_token}"
   export AWS_ACCESS_KEY_ID="${var.aws_access_key_id}"
   export AWS_SECRET_ACCESS_KEY="${var.aws_secret_access_key}"
+  export CEDANA_REMOTE=true
 
   # Retry logic for git clone (up to 5 attempts with exponential backoff)
   for i in {1..5}; do
