@@ -2,9 +2,9 @@
 
 #!/bin/bash
 
-# Check if job ID is provided
-if [ -z "$1" ]; then
-    echo "Usage: $0 <job-id>"
+# Check if job ID and instance IP are provided
+if [ -z "$1" ] || [ -z "$2" ]; then
+    echo "Usage: $0 <job-id> <instance-ip>"
     exit 1
 fi
 
@@ -25,6 +25,7 @@ cleanup() {
 trap cleanup SIGINT
 
 JOB_ID=$1
+INSTANCE_IP=$2
 
 # Function to check for checkpoint and restore
 check_and_restore() {
