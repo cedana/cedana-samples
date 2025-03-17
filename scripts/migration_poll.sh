@@ -32,36 +32,15 @@ check_and_restore() {
     BLA::start_loading_animation "${BLA_football[@]}"
 
     while true; do
-        # Get the checkpoint list for the given job ID
-        CHECKPOINT_LIST=$(cedana checkpoint list "$JOB_ID")
-        # Sync with DB
-        cedana ps >/dev/null
+        while nc -z -w 2 "$INSTANCE_IP" 22; do
+            sleep 0.1
+        done
 
-        # Check if the checkpoint list contains any checkpoint
-        if echo "$CHECKPOINT_LIST" | grep -q "dump"; then
-            # Extract the checkpoint ID from the list
-            CHECKPOINT_ID=$(echo "$CHECKPOINT_LIST" | awk 'NR==2 {print $1}')
+        BLA::stop_loading_animation
+        cedana restore job "$JOB_ID" -a --tcp-close
 
-            # Wait for instance to die before restoring
-            FILE="/root/shared-mount/dump-process-${JOB_ID}.tar"
-
-            while [[ ! -f "$FILE" ]]; do
-                sleep 0.5 # Wait for 1 second before checking again
-            done
-
-            cp -r "$FILE" "/root/dump-process-${JOB_ID}.tar"
-            echo -e "\nCheckpoint detected with ID: $CHECKPOINT_ID"
-
-            while nc -z -w 2 "$INSTANCE_IP" 22; do
-                sleep 0.1
-            done
-
-            BLA::stop_loading_animation
-            cedana restore job "$JOB_ID" -a --tcp-close
-
-            # Exit after restoring
-            break
-        fi
+        # Exit after restoring
+        break
 
         # Sleep briefly to avoid hammering the CPU
         sleep 1

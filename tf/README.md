@@ -31,6 +31,8 @@ If using Crusoe, I recommend installing the Crusoe [CLI](https://docs.crusoeclou
 
 ### Creating nodes 
 
+Inside the folder for a provider (e.g tf/crusoe), run:
+
 ``` sh
 terraform init
 ```
