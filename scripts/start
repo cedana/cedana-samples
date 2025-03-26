@@ -1,8 +1,7 @@
 #!/bin/bash
 
-SUDO=sudo -E env "PATH=$(PATH)"
 ## kill all cedana first
-pgrep cedana | xargs -r $(SUDO) kill -TERM
+pgrep cedana | xargs -r sudo kill -TERM
 
 ## Mount a shared bucket
 s3fs cedana-demo /mnt/s3 -o passwd_file=~/.passwd-s3fs
