@@ -27,14 +27,21 @@ variable "ssh_key" {
   default     = "~/.ssh/laptop-keypair.pub"
 }
 
+variable "ssh_key_names" {
+  description = "List of SSH key names"
+  type        = list(string)
+  default     = ["laptop-keypair"]
+}
+
 variable "instance_names" {
   description = "List of instance names"
   type        = list(string)
   default     = ["cedana-demo-a", "cedana-demo-b"]
 }
 
-variable "instance_type" {
-  description = "Instance type"
+
+variable "lambdalabs_api_key" {
+  description = "Lambda Labs API key"
   type        = string
-  default     = "a40.1x"
+  sensitive   = true
 }

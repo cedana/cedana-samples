@@ -7,18 +7,15 @@ terraform {
 }
 
 provider "lambdalabs" {
-  api_key = "LAMBDALABS_API_KEY"
+  api_key = var.lambdalabs_api_key
 }
 
-variable "instances" {
-  default = ["cedana-demo-a", "cedana-demo-b"]
-}
 
 resource "lambdalabs_instance" "demo_instance" {
-  for_each           = toset(var.instances)
+  for_each           = toset(var.instance_names)
   region_name        = "us-west-1"
   instance_type_name = "gpu_1x_a100"
-  ssh_key_names      = ["terraform"]
+  ssh_key_names      = var.ssh_key_names
 
   connection {
     type        = "ssh"
@@ -29,6 +26,11 @@ resource "lambdalabs_instance" "demo_instance" {
 
   provisioner "remote-exec" {
     inline = [
+      "echo 'export CEDANA_URL=${var.cedana_url}' >> /etc/environment",
+      "echo 'export CEDANA_AUTH_TOKEN=${var.cedana_auth_token}' >> /etc/environment",
+      "echo 'export AWS_ACCESS_KEY_ID=${var.aws_access_key_id}' >> /etc/environment",
+      "echo 'export AWS_SECRET_ACCESS_KEY=${var.aws_secret_access_key}' >> /etc/environment",
+      "echo 'export CEDANA_REMOTE=true' >> /etc/environment",
       "git clone https://github.com/cedana/cedana-samples.git",
       "./cedana-samples/scripts/bootstrap-instance"
     ]

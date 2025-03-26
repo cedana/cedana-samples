@@ -11,7 +11,7 @@ resource "crusoe_compute_instance" "cedana_demo" {
   for_each = toset(var.instance_names)
 
   name     = each.value
-  type     = "a40.1x"
+  type     = var.instance_type
   location = "us-northcentral1-a"
 
   image   = "ubuntu22.04:latest"
