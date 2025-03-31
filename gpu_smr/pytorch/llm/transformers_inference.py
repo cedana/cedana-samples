@@ -1,28 +1,48 @@
-import torch
-from transformers import AutoTokenizer, AutoModelForCausalLM
+# Use for generic transformers inference
+
+import argparse
+import time
+from transformers import AutoModelForCausalLM, AutoTokenizer
+
+# Parse command-line arguments
+parser = argparse.ArgumentParser(description="Configure model and sleep duration for the script.")
+parser.add_argument(
+    "--model",
+    type=str,
+    default="stabilityai/stablelm-2-1_6b",
+    help="Model name or path to use. Default is 'stabilityai/stablelm-2-1_6b'."
+)
+parser.add_argument(
+    "--sleep",
+    type=int,
+    default=0,
+    help="Duration (in seconds) to sleep before starting the loop. Default is 0 seconds."
+)
+args = parser.parse_args()
 
 # Load the tokenizer and model
-model_id = "meta-llama/Llama-3.2-1B"
-tokenizer = AutoTokenizer.from_pretrained(model_id)
-model = AutoModelForCausalLM.from_pretrained(model_id)
+print(f"Loading model: {args.model}")
+tokenizer = AutoTokenizer.from_pretrained(args.model)
+model = AutoModelForCausalLM.from_pretrained(
+    args.model,
+    torch_dtype="auto",
+)
+model.cuda()
 
-# Initialize the input text
-input_text = "What is the meaning of life?"
+# Sleep for the specified duration
+time.sleep(args.sleep)
 
 while True:
+    user_input = "some prompt"
     # Tokenize input
-    inputs = tokenizer(input_text, return_tensors="pt")
-
-    # Generate output
-    output = model.generate(**inputs, max_new_tokens=50)
-
-    # Decode and print the result
-    result = tokenizer.decode(output[0], skip_special_tokens=True)
-    print(result)
-
-    # Update the input text with the generated output
-    input_text = result
-
-    # Optional: Add a small delay to make the loop more readable
-    import time
-    time.sleep(1)
+    inputs = tokenizer(user_input, return_tensors="pt").to(model.device)
+    # Generate tokens
+    tokens = model.generate(
+        **inputs,
+        max_new_tokens=64,
+        temperature=0.70,
+        top_p=0.95,
+        do_sample=True,
+    )
+    output = tokenizer.decode(tokens[0], skip_special_tokens=True)
+    print(f"Generated Output:\n{output}")
