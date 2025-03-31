@@ -1,4 +1,6 @@
-torch<2.5.0  # PyTorch for backend computation
+# Requirements for Torch are hardcoded, everything else floats
+# based on torch.
+torch~=2.4.0
 transformers
 numpy
 diffusers
