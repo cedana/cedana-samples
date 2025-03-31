@@ -7,7 +7,7 @@ parser = argparse.ArgumentParser(description="Configure sleep duration for the m
 parser.add_argument(
     "--sleep",
     type=int,
-    default=10,
+    default=0,
     help="Duration (in seconds) to sleep before starting the loop. Default is 10 seconds."
 )
 args = parser.parse_args()
