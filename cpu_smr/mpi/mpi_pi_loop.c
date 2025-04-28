@@ -81,22 +81,9 @@ int main(int argc, char *argv[]) {
 #endif
       printf("Iter %lld: Calculated pi = %.16f (Error=%.3e) Time=%.4f s\n",
              loop_count, pi, fabs(pi - M_PI), iter_end_time - iter_start_time);
-      fflush(stdout); // Ensure output is displayed promptly
-
-      // Optional: pause briefly to avoid flooding output / consuming 100% CPU
-      //           if the calculation itself is very fast.
       sleep(1); // Sleep for 1 second
     }
-    // Add barrier if you want all processes to pause roughly together
-    // (optional) MPI_Barrier(MPI_COMM_WORLD); if (rank != 0) { sleep(1); } //
-    // Make non-root processes sleep too
-
-  } // End of while(1) loop
-
-  // --- Finalize MPI (Technically unreachable in infinite loop) ---
-  // This part will only execute if the loop is broken somehow (e.g., future
-  // modification) or potentially during signal handling depending on the MPI
-  // implementation.
+  }
   MPI_Finalize();
   return 0;
 }
