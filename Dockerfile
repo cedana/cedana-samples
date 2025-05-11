@@ -1,5 +1,7 @@
+ARG CUDA_VERSION=12.4
+
 # Install dependencies
-FROM nvidia/cuda:12.4.1-devel-ubuntu22.04
+FROM nvidia/cuda:${CUDA_VERSION}.0-devel-ubuntu22.04
 
 ARG TORCH_VERSION=2.4
 

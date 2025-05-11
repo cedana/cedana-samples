@@ -22,6 +22,15 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        cuda_version:
+          - 11.8
+          - 12.2
+          - 12.4
+          - 12.8
+        torch_version:
+          - 2.4
+          - 2.5
+          - 2.6
         arch:
           - amd64
           - arm64
@@ -54,12 +63,15 @@ jobs:
         id: build
         uses: docker/build-push-action@v6
         with:
+          build-args: |
+            CUDA_VERSION=${{ matrix.cuda_version }}
+            TORCH_VERSION=${{ matrix.torch_version }}
           context: .
           push: true
           platforms: linux/${{ matrix.arch }}
           labels: ${{ steps.meta.outputs.labels }}
           outputs: |
-            type=image,name=${{ inputs.image_name }},push-by-digest=true,name-canonical=true,push=true
+            type=image,name=cedana/cedana-samples,push-by-digest=true,name-canonical=true,push=true
           cache-from: type=s3,blobs_prefix=cache/${{ github.repository }}/,manifests_prefix=cache/${{ github.repository }}/${{ matrix.arch }},region=${{ env.RUNS_ON_AWS_REGION }},bucket=${{ env.RUNS_ON_S3_BUCKET_CACHE }}
           cache-to: type=s3,blobs_prefix=cache/${{ github.repository }}/,manifests_prefix=cache/${{ github.repository }}/${{ matrix.arch }},region=${{ env.RUNS_ON_AWS_REGION }},bucket=${{ env.RUNS_ON_S3_BUCKET_CACHE }},mode=max
 
@@ -72,7 +84,7 @@ jobs:
       - name: Upload digest
         uses: actions/upload-artifact@v4
         with:
-          name: digests-${{ matrix.arch }}
+          name: digests-${{ matrix.cuda_version }}-${{ matrix.torch_version }}-${{ matrix.arch }}
           path: /tmp/digests/*
           if-no-files-found: error
           retention-days: 1
@@ -81,6 +93,18 @@ jobs:
     name: Publish (multi-arch)
     needs: build
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        cuda_version:
+          - 11.8
+          - 12.2
+          - 12.4
+          - 12.8
+        torch_version:
+          - 2.4
+          - 2.5
+          - 2.6
     permissions:
       contents: read
       packages: write
@@ -89,7 +113,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: /tmp/digests
-          pattern: digests-*
+          pattern: digests-${{ matrix.cuda_version }}-${{ matrix.torch_version }}-*
           merge-multiple: true
 
       - name: Set up Docker Buildx
@@ -107,16 +131,16 @@ jobs:
         with:
           images: cedana/cedana-samples
           tags: |
-            type=raw,value=${{ github.sha }}
-            type=raw,value=${{ github.head_ref || github.ref_name }}
+            type=raw,value=cuda${{ matrix.cuda_version }}-torch${{ matrix.torch_version }}
+            type=raw,value=${{ github.ref_name }}-cuda${{ matrix.cuda_version }}-torch${{ matrix.torch_version }}
 
       - name: Create manifest list and push
         working-directory: /tmp/digests
         run: |
           docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
-            $(printf '${{ inputs.image_name }}@sha256:%s ' *)
+            $(printf 'cedana/cedana-samples@sha256:%s ' *)
 
       - name: Inspect image
         run: |
           # check if push was successful
-          docker buildx imagetools inspect ${{ inputs.image_name }}:${{ steps.meta.outputs.version }}
+          docker buildx imagetools inspect cedana/cedana-samples:${{ steps.meta.outputs.version }}
