@@ -36,14 +36,15 @@ COPY gpu_smr/ /app/gpu_smr/
 
 # Build workloads
 WORKDIR /app/gpu_smr
-RUN cmake $@ -B build -S .
-RUN cmake --build build
-RUN find /app/gpu_smr/build -type f -executable -exec mv {} /app/gpu_smr \;
-RUN rm -rf /app/gpu_smr/build
+RUN <<EOT
+set -eux
+cmake $@ -B build -S .
+cmake --build build
+find /app/gpu_smr/build -type f -executable -exec mv {} /app/gpu_smr \;
+rm -rf /app/gpu_smr/build
+EOT
 
 # Define entrypoint script
-RUN echo '#!/bin/bash\n\
-python3 /app/workloads/$1\n' > /app/entrypoint.sh && \
-    chmod +x /app/entrypoint.sh
+WORKDIR /app
 
-ENTRYPOINT ["/app/entrypoint.sh"]
+ENTRYPOINT ["/bin/bash"]
