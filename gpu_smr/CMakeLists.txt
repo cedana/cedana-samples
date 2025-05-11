@@ -13,7 +13,7 @@ endif()
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_BUILD_TYPE Release)
 
-find_package(CUDA 12.4 REQUIRED)
+find_package(CUDA 11.8 REQUIRED)
 
 option(DEBUG "Enable debugging symbols" OFF)
 if(DEBUG)
