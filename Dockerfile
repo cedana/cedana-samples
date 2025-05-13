@@ -18,6 +18,12 @@ RUN apt-get update && apt-get install -y \
     python3-pip \
     cmake
 
+# Install MPI dependencies
+RUN apt-get update && apt-get install -y \
+    openmpi-bin \
+    openmpi-doc \
+    libopenmpi-dev
+
 # Create app directory
 WORKDIR /app
 
