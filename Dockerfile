@@ -55,7 +55,7 @@ EOT
 WORKDIR /app/cpu_smr/mpi
 RUN <<EOT
 set -eux
-mpicc -o mpi_pi_loop.c -o mpi_pi_loop
+mpicc mpi_pi_loop.c -o mpi_pi_loop
 EOT
 
 # Define entrypoint script
