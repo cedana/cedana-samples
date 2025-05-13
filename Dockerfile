@@ -18,6 +18,13 @@ RUN apt-get update && apt-get install -y \
     python3-pip \
     cmake
 
+# Install MPI dependencies
+RUN apt-get update && apt-get install -y \
+    openmpi-bin \
+    openmpi-doc \
+    libopenmpi-dev
+
+
 # Create app directory
 WORKDIR /app
 
@@ -42,6 +49,13 @@ cmake $@ -B build -S .
 cmake --build build
 find /app/gpu_smr/build -type f -executable -exec mv {} /app/gpu_smr \;
 rm -rf /app/gpu_smr/build
+EOT
+
+# build MPI workloads
+WORKDIR /app/cpu_smr/mpi
+RUN <<EOT
+set -eux
+mpicc -o mpi_pi_loop.c -o mpi_pi_loop
 EOT
 
 # Define entrypoint script
