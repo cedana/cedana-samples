@@ -24,6 +24,7 @@ RUN apt-get update && apt-get install -y \
     openmpi-doc \
     libopenmpi-dev
 
+
 # Create app directory
 WORKDIR /app
 
@@ -49,6 +50,15 @@ cmake --build build
 find /app/gpu_smr/build -type f -executable -exec mv {} /app/gpu_smr \;
 rm -rf /app/gpu_smr/build
 EOT
+
+# build MPI workloads
+WORKDIR /app/cpu_smr/mpi
+RUN <<EOT
+set -eux
+mpicc -o mpi_pi_loop.c -o mpi_pi_loop
+EOT
+
+
 
 # Define entrypoint script
 WORKDIR /app
