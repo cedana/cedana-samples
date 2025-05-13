@@ -58,8 +58,6 @@ set -eux
 mpicc -o mpi_pi_loop.c -o mpi_pi_loop
 EOT
 
-
-
 # Define entrypoint script
 WORKDIR /app
 
