@@ -58,6 +58,13 @@ set -eux
 mpicc mpi_pi_loop.c -o mpi_pi_loop
 EOT
 
+# Download and setup llama.cpp
+RUN <<EOT
+set -eux
+wget https://github.com/ggml-org/llama.cpp/releases/download/b5497/llama-b5497-bin-ubuntu-x64.zip -o llama.zip
+unzip llama.zip && cp -r build/bin/* /usr/local/bin/
+EOT
+
 # Define entrypoint script
 WORKDIR /app
 
