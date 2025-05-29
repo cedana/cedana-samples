@@ -5,7 +5,8 @@ import torch
 import torch.distributed as dist
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.utils.data import DataLoader, DistributedSampler
-from transformers import AutoModelForSequenceClassification, AutoTokenizer, AdamW
+from transformers import AutoModelForSequenceClassification, AutoTokenizer
+from torch.optim import AdamW
 from datasets import load_dataset
 
 # Initialize the distributed environment
