@@ -57,7 +57,7 @@ def train(rank, world_size, model, tokenizer, dataset, epochs=3):
             loss.backward()
             optimizer.step()
             if rank == 0 and i % 10 == 0:  # Log every 10 batches
-                print(f"Epoch {epoch}, Batch {i}, Loss: {loss.item()}")
+                print(f"Epoch {epoch}, Batch {i}, Loss: {loss.item()}", flush=True)
 
     # Save the model on rank 0
     if rank == 0:
