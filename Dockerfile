@@ -64,9 +64,13 @@ ARG TORCH_VERSION=2.4
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
+    curl \
+    unzip \
+    wget \
+    git \
     python3 \
     python3-venv \
-    python3-pip
+    python3-pip 
 
 # Install MPI dependencies
 RUN apt-get update && apt-get install -y openmpi-bin 
