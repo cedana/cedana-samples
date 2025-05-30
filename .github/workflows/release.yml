@@ -133,6 +133,7 @@ jobs:
           tags: |
             type=raw,value=cuda${{ matrix.cuda_version }}-torch${{ matrix.torch_version }}
             type=raw,value=${{ github.ref_name }}-cuda${{ matrix.cuda_version }}-torch${{ matrix.torch_version }}
+            ${{ (matrix.cuda_version == '12.4' && matrix.torch_version == '2.4') && 'type=raw,value=latest' || '' }}
 
       - name: Create manifest list and push
         working-directory: /tmp/digests
