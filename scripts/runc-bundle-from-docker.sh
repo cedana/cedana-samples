@@ -13,6 +13,7 @@ IMG="$1"
 BUNDLE="bundle"
 
 mkdir -p "$BUNDLE"
+
 sudo mkdir "$BUNDLE/rootfs"
 
 # Create and export the docker container's filesystem
@@ -40,19 +41,25 @@ if [ -f "$CONFIG" ]; then
         --arg entrypoint "$entrypoint" \
         --arg args "$args" \
         '
-        .process.args = ($entrypoint | split(" ")) + ($args | select(. != "") | split(" "))
+        .process.args = ($entrypoint | split(" ")) + ($args | split(" "))
        | .process.env = $env
        | .process.env +=
          ["NVIDIA_VISIBLE_DEVICES=all", "NVIDIA_DRIVER_CAPABILITIES=all", "NVIDIA_REQUIRE_CUDA=cuda>=11.0"]
        | .hooks["prestart"] += [{
           "path": "/usr/bin/nvidia-container-runtime-hook",
           "args": ["nvidia-container-runtime-hook", "prestart"]
-        }]
+         }]
+       | .mounts += [{
+           "destination": "/tmp",
+           "type": "tmpfs",
+           "source": "tmpfs",
+           "options": ["nosuid","strictatime","mode=1777","size=65536k"]
+         }]
     ' "$CONFIG" > config_nvidia.json && mv config_nvidia.json "$CONFIG" || {
         echo "Failed to update $CONFIG for args/env/NVIDIA. Check if jq is installed and /dev/nvidia* exist." >&2
         exit 1
     }
-    echo "Modified $CONFIG for NVIDIA GPU support and original container args/env."
+    echo "Modified $CONFIG for NVIDIA GPU support, original container args/env, and /tmp tmpfs mount."
 else
     echo "Warning: $CONFIG not found, cannot update for NVIDIA or env/args." >&2
 fi
