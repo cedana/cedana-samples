@@ -1,0 +1,20 @@
+# test-pod.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: cedana-samples
+  labels:
+    app: cedana-sample
+spec:
+  restartPolicy: Never
+  containers:
+  - name: cedana-sample-container
+    image: "cedana/cedana-samples:latest"
+    command: ["/bin/sh", "-c", "/app/cpu_smr/counting.sh"]
+    resources:
+      requests:
+        cpu: "100m"  # Request 0.1 CPU core
+        memory: "128Mi" # Request 128 Megabytes of memory
+      limits:
+        cpu: "500m"  # Limit to 0.5 CPU core
+        memory: "512Mi" # Limit to 512 Megabytes of memory
