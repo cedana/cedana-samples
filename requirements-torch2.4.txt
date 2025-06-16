@@ -2,6 +2,7 @@
 # based on torch.
 torch~=2.4.0
 transformers
+ray[rllib]
 numpy
 diffusers
 scipy
