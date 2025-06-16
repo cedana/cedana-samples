@@ -23,7 +23,6 @@ parser.add_argument("--num-policies", type=int, default=2)
 
 
 if __name__ == "__main__":
-    # This line forces the script to run on the CPU, even if GPUs are available.
     os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
     args = parser.parse_args()

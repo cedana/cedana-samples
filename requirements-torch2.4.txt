@@ -3,6 +3,7 @@
 torch~=2.4.0
 transformers
 ray[rllib]
+gymnasium
 numpy
 diffusers
 scipy
