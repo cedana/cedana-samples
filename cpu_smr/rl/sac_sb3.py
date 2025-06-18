@@ -3,7 +3,9 @@
 import gymnasium as gym
 from stable_baselines3 import SAC
 
-# 1. Create the environment
+import os
+os.environ["CUDA_VISIBLE_DEVICES"] = ""
+
 env = gym.make("BipedalWalker-v3")
 
 model = SAC(
