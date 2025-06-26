@@ -6,11 +6,16 @@ metadata:
   labels:
     app: cedana-test
 spec:
+  runtimeClassName: cedana
   restartPolicy: Never
   containers:
   - name: workload-container
     image: "cedana/cedana-samples:latest"
     command: ["/bin/sh", "-c", "/app/gpu_smr/vector_add"]
-    resources:
-      limits:
+    env:
+      - name: CEDANA_GPU
+        value: "1"
+
+    resources: 
+      limits: 
         nvidia.com/gpu: 1
