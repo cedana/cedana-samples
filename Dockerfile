@@ -52,14 +52,13 @@ find /app -name "*.a" -delete
 EOT
 
 # Use smaller runtime image
-FROM nvidia/cuda:${CUDA_VERSION}.0-runtime-ubuntu22.04 AS runtime 
+FROM nvidia/cuda:${CUDA_VERSION}.0-runtime-ubuntu22.04 AS runtime
 
 ARG TORCH_VERSION=2.4
 
 # Install only runtime dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 \
-    python3-venv \
     python3-pip \
     openmpi-bin \
     && apt-get clean \
@@ -74,19 +73,10 @@ WORKDIR /app
 # Copy requirements file
 COPY requirements-torch${TORCH_VERSION}.txt /app/requirements.txt
 
-# Set up Python virtual environment and install dependencies efficiently
-RUN python3 -m venv /opt/venv \
-    && . /opt/venv/bin/activate \
-    && pip install --no-cache-dir --upgrade pip \
+# Install Python dependencies globally
+RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir -r requirements.txt \
     && rm -rf /root/.cache/pip \
     && rm -rf /tmp/* /var/tmp/*
 
-# Set the virtual environment as the default Python
-ENV PATH="/opt/venv/bin:$PATH"
-
-# Create a non-root user for better security
-RUN useradd -m -u 1000 cedana && chown -R cedana:cedana /app
-USER cedana
-
-ENTRYPOINT ["/bin/bash"] 
+ENTRYPOINT ["/bin/bash"]
