@@ -12,9 +12,6 @@ spec:
   - name: workload-container
     image: "cedana/cedana-samples:latest"
     command: ["/bin/sh", "-c", "/app/gpu_smr/vector_add"]
-    env:
-      - name: CEDANA_GPU
-        value: "1"
 
     resources: 
       limits: 
