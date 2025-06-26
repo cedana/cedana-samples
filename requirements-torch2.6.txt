@@ -1,9 +1,9 @@
 # Requirements for Torch are hardcoded, everything else floats
 # based on torch.
-torch>=2.6.0
-transformers
+torch~=2.6.0
 stable-baselines3[extra]
 gymnasium
+transformers
 numpy
 diffusers
 scipy
@@ -17,3 +17,4 @@ accelerate
 pyannote.metrics
 lightning
 evaluate
+

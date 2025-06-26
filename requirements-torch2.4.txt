@@ -1,14 +1,13 @@
 # Requirements for Torch are hardcoded, everything else floats
 # based on torch.
 torch~=2.4.0
-transformers
-ray[rllib]
 stable-baselines3[extra]
 gymnasium
+transformers
 numpy
 diffusers
 scipy
-tqdm 
+tqdm
 wandb
 tiktoken
 datasets
@@ -17,4 +16,5 @@ datasets[audio]
 accelerate
 pyannote.metrics
 lightning
-evaluate 
+evaluate
+

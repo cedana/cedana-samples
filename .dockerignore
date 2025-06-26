@@ -1,0 +1,63 @@
+# Git
+.git
+.gitignore
+.gitmodules
+
+# Documentation
+README.md
+LICENSE
+docs/
+
+# Build artifacts and binaries (they'll be built in the container)
+gpu_smr/*.o
+gpu_smr/build/
+gpu_smr/*.so
+gpu_smr/*.a
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+*.egg-info/
+.pytest_cache/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.temp
+
+# Scripts that aren't needed in the container
+scripts/
+build.sh
+publish.sh
+
+# Test files
+test_pod*.yaml
+
+# Environment files
+.env
+.env.local
+
+# Helm charts and Kubernetes manifests
+*.yaml
+*.yml
+!requirements-*.txt 
