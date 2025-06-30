@@ -1,0 +1,99 @@
+name: Build
+
+permissions:
+  contents: read
+  actions: read
+  packages: read
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        type: string
+        description: "The branch, tag, or SHA to run on"
+        required: false
+        default: ""
+      image:
+        type: boolean
+        description: "Build Docker image"
+        required: false
+        default: false
+      image_name:
+        type: string
+        description: "Name of the Docker image to build"
+        required: false
+        default: cedana/cedana-samples
+
+jobs:
+  build:
+    name: Build
+    runs-on: runs-on=${{github.run_id}}/runner=4cpu-16g-${{ matrix.arch }}/extras=s3-cache
+    strategy:
+      fail-fast: false
+      matrix:
+        cuda_version:
+          - 11.8
+          - 12.2
+          - 12.4
+          - 12.8
+        torch_version:
+          - 2.4
+          - 2.5
+          - 2.6
+        arch:
+          - amd64
+          - arm64
+    steps:
+      - uses: runs-on/action@v1
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.ref }}
+          submodules: recursive
+          fetch-tags: true
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@9ec57ed1fcdbf14dcef7dfbe97b2010124a938b7
+        with:
+          images: ${{ inputs.image_name }}
+
+      - name: Login to Docker hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ vars.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_TOKEN }}
+
+      - name: Build and generate manifest
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          build-args: |
+            CUDA_VERSION=${{ matrix.cuda_version }}
+            TORCH_VERSION=${{ matrix.torch_version }}
+          context: .
+          push: true
+          platforms: linux/${{ matrix.arch }}
+          labels: ${{ steps.meta.outputs.labels }}
+          outputs: |
+            type=image,name=${{ inputs.image_name }},push-by-digest=true,name-canonical=true,push=true
+          cache-from: type=s3,blobs_prefix=cache/${{ github.repository }}/,manifests_prefix=cache/${{ github.repository }}/${{ matrix.arch }},region=${{ env.RUNS_ON_AWS_REGION }},bucket=${{ env.RUNS_ON_S3_BUCKET_CACHE }}
+          cache-to: type=s3,blobs_prefix=cache/${{ github.repository }}/,manifests_prefix=cache/${{ github.repository }}/${{ matrix.arch }},region=${{ env.RUNS_ON_AWS_REGION }},bucket=${{ env.RUNS_ON_S3_BUCKET_CACHE }},mode=max
+
+      - name: Export digest
+        run: |
+          mkdir -p /tmp/digests
+          digest="${{ steps.build.outputs.digest }}"
+          touch "/tmp/digests/${digest#sha256:}"
+
+      - name: Upload digest
+        uses: actions/upload-artifact@v4
+        with:
+          name: digests-${{ matrix.cuda_version }}-${{ matrix.torch_version }}-${{ matrix.arch }}
+          path: /tmp/digests/*
+          if-no-files-found: error
+          retention-days: 1
