@@ -1,13 +1,14 @@
-name: Release
+name: PR
 
 on:
-  push:
-    tags:
-      - "*"
+  pull_request:
+    types: [opened, synchronize]
+    branches:
+      - main
   workflow_dispatch:
 
 concurrency:
-  group: release-${{ github.event.pull_request.number || github.ref }}
+  group: pr-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
 jobs:
@@ -17,6 +18,7 @@ jobs:
     secrets: inherit
     with:
       image: true
+      image_name: cedana/cedana-samples-test
 
   publish:
     name: Publish
@@ -24,6 +26,6 @@ jobs:
     needs: build
     secrets: inherit
     with:
-      github: true
+      image_name: cedana/cedana-samples-test
       dockerhub: true
-      post_summary: true
+      post_summary: false
