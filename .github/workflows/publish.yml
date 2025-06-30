@@ -3,6 +3,11 @@ name: Publish
 on:
   workflow_call:
     inputs:
+      github:
+        type: boolean
+        description: "Publish to GitHub releases"
+        required: false
+        default: false
       dockerhub:
         type: boolean
         description: "Publish images to Docker Hub"
@@ -20,6 +25,24 @@ on:
         default: false
 
 jobs:
+  github:
+    name: GitHub
+    if: inputs.github
+    runs-on: ubuntu-latest
+    steps:
+      - uses: runs-on/action@v1
+
+      - name: Create release
+        id: create-release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          tag: ${{ github.head_ref || github.ref_name }}
+        run: |
+          gh release create "$tag" \
+              --repo="$GITHUB_REPOSITORY" \
+              --title="$tag" \
+              --generate-notes
+
   dockerhub:
     name: DockerHub (multi-arch)
     runs-on: ubuntu-latest
