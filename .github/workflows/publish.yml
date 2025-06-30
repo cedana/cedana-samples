@@ -21,7 +21,7 @@ on:
 
 jobs:
   dockerhub:
-    name: Publish (multi-arch)
+    name: DockerHub (multi-arch)
     runs-on: ubuntu-latest
     if: ${{ inputs.dockerhub }}
     strategy:

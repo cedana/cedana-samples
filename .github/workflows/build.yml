@@ -25,8 +25,9 @@ on:
         default: cedana/cedana-samples
 
 jobs:
-  build:
-    name: Build
+  image:
+    name: Image
+    if: ${{ inputs.image }}
     runs-on: runs-on=${{github.run_id}}/runner=4cpu-16g-${{ matrix.arch }}/extras=s3-cache
     strategy:
       fail-fast: false
