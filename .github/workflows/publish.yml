@@ -63,7 +63,7 @@ jobs:
           images: ${{ inputs.image_name }}
           tags: |
             type=raw,value=cuda${{ matrix.cuda_version }}-torch${{ matrix.torch_version }}
-            type=raw,value=${{ github.ref_name }}-cuda${{ matrix.cuda_version }}-torch${{ matrix.torch_version }}
+            type=raw,value=${{ github.head_ref || github.ref_name }}-cuda${{ matrix.cuda_version }}-torch${{ matrix.torch_version }}
             ${{ (matrix.cuda_version == '12.4' && matrix.torch_version == '2.4') && 'type=raw,value=latest' || '' }}
 
       - name: Create manifest list and push
@@ -114,7 +114,7 @@ jobs:
       - name: Generate summary
         id: summary
         env:
-          RELEASE_TITLE: "cedana"
+          RELEASE_TITLE: "cedana-samples"
           RELEASE_DESCRIPTION: "**${{ steps.tag.outputs.tag }}**"
           RELEASE_NOTES_URL: https://github.com/${{ github.repository }}/releases/${{ steps.tag.outputs.tag }}
           RELEASE_BODY: "${{ steps.release-info.outputs.description }}"

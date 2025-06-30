@@ -28,4 +28,4 @@ jobs:
     with:
       image_name: cedana/cedana-samples-test
       dockerhub: true
-      post_summary: true
+      post_summary: false
