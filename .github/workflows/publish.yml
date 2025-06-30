@@ -22,7 +22,6 @@ on:
 jobs:
   dockerhub:
     name: Publish (multi-arch)
-    needs: build
     runs-on: ubuntu-latest
     if: ${{ inputs.dockerhub }}
     strategy:
