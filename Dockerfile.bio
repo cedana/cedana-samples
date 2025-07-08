@@ -1,3 +1,6 @@
+FROM phusion/baseimage:latest
+    MAINTAINER Niranjan Ravichandra <nravic@cedana-linux>
+
 ARG CUDA_VERSION=12.4
 
 FROM nvidia/cuda:${CUDA_VERSION}.0-devel-ubuntu22.04 AS builder
@@ -14,9 +17,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3-venv \
     python3-pip \
     cmake \
-    openmpi-bin \
-    openmpi-doc \
-    libopenmpi-dev \
     build-essential \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* \
@@ -27,24 +27,9 @@ WORKDIR /app
 COPY cpu_smr/ /app/cpu_smr/
 COPY gpu_smr/ /app/gpu_smr/
 
-RUN <<EOT
-set -eux
-cd /app/gpu_smr
-cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
-cmake --build build --parallel $(nproc)
-find /app/gpu_smr/build -type f -executable -exec mv {} /app/gpu_smr \;
-rm -rf /app/gpu_smr/build
-
-cd /app/cpu_smr/mpi
-mpicc -O3 mpi_pi_loop.c -o mpi_pi_loop
-
-find /app -name "*.o" -delete
-find /app -name "*.a" -delete
-EOT
 
 FROM nvidia/cuda:${CUDA_VERSION}.0-runtime-ubuntu22.04 AS runtime
 
-ARG TORCH_VERSION=2.4
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 \
@@ -58,8 +43,10 @@ COPY --from=builder /app /app
 
 WORKDIR /app
 
-COPY requirements-torch${TORCH_VERSION}.txt /app/requirements.txt
+# Copy requirements file
+COPY requirements-compbio.txt /app/requirements.txt
 
+# Install Python dependencies globally
 RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir -r requirements.txt \
     && rm -rf /root/.cache/pip \

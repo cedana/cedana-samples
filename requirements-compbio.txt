@@ -1,0 +1,2 @@
+# Separate from standard torch requirements, keeps environments clean
+boltz~=2.1.1
