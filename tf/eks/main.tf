@@ -1,42 +1,18 @@
+# --------------------------------------------------------------------------------------------------
+# main.tf - Main configuration for the EKS Cluster and Node Groups
+# --------------------------------------------------------------------------------------------------
+
 provider "aws" {
   region = var.aws_region
 }
 
+# --- Data Source for Canonical Ubuntu 22.04 AMI ---
+# Uses the SSM Parameter path for official Canonical Ubuntu AMIs for EKS.
 data "aws_ssm_parameter" "eks_ubuntu_ami_id" {
-  name = "/aws/service/eks/optimized-ami/${var.k8s_version}/ubuntu-22.04/amd64/recommended/image_id"
+  name = "/aws/service/canonical/ubuntu/eks/24.04/${var.k8s_version}/stable/current/amd64/hvm/ebs-gp3/ami-id"
 }
 
-data "aws_ssm_parameter" "eks_ubuntu_ami_release_version" {
-  name = "/aws/service/eks/optimized-ami/${var.k8s_version}/ubuntu-22.04/amd64/recommended/release_version"
-}
-
-resource "aws_vpc" "eks_vpc" {
-  cidr_block           = "10.0.0.0/16"
-  enable_dns_support   = true
-  enable_dns_hostnames = true
-
-  tags = {
-    Name = "${var.cluster_name}-vpc"
-  }
-}
-
-resource "aws_subnet" "eks_subnet" {
-  count                   = 2
-  vpc_id                  = aws_vpc.eks_vpc.id
-  cidr_block              = "10.0.${count.index + 1}.0/24"
-  availability_zone       = data.aws_availability_zones.available.names[count.index]
-  map_public_ip_on_launch = true # For simplicity, we'll use public subnets. For production, private subnets are recommended.
-
-  tags = {
-    Name                                        = "${var.cluster_name}-subnet-${count.index + 1}"
-    "kubernetes.io/cluster/${var.cluster_name}" = "shared"
-  }
-}
-
-data "aws_availability_zones" "available" {
-  state = "available"
-}
-
+# --- IAM Role for EKS Cluster ---
 resource "aws_iam_role" "eks_cluster_role" {
   name = "${var.cluster_name}-cluster-role"
 
@@ -63,13 +39,15 @@ resource "aws_iam_role_policy_attachment" "eks_cluster_policy" {
   role       = aws_iam_role.eks_cluster_role.name
 }
 
+# --- EKS Cluster ---
 resource "aws_eks_cluster" "cedana_ci_cluster" {
   name     = var.cluster_name
   version  = var.k8s_version
   role_arn = aws_iam_role.eks_cluster_role.arn
 
   vpc_config {
-    subnet_ids = [for subnet in aws_subnet.eks_subnet : subnet.id]
+    subnet_ids              = var.subnet_ids
+    endpoint_private_access = true
   }
 
   depends_on = [
@@ -81,6 +59,7 @@ resource "aws_eks_cluster" "cedana_ci_cluster" {
   }
 }
 
+# --- IAM Role for EKS Node Groups ---
 resource "aws_iam_role" "eks_node_group_role" {
   name = "${var.cluster_name}-node-group-role"
 
@@ -117,6 +96,7 @@ resource "aws_iam_role_policy_attachment" "ec2_container_registry_read_only" {
   role       = aws_iam_role.eks_node_group_role.name
 }
 
+# --- Launch Templates for Node Groups ---
 resource "aws_launch_template" "gpu_nodes_lt" {
   name_prefix   = "${var.gpu_nodepool_name}-"
   image_id      = data.aws_ssm_parameter.eks_ubuntu_ami_id.value
@@ -143,12 +123,12 @@ resource "aws_launch_template" "cpu_nodes_lt" {
   }
 }
 
+# --- GPU Node Group ---
 resource "aws_eks_node_group" "gpu_node_group" {
   cluster_name    = aws_eks_cluster.cedana_ci_cluster.name
   node_group_name = var.gpu_nodepool_name
   node_role_arn   = aws_iam_role.eks_node_group_role.arn
-  subnet_ids      = [for subnet in aws_subnet.eks_subnet : subnet.id]
-  release_version = data.aws_ssm_parameter.eks_ubuntu_ami_release_version.value
+  subnet_ids      = var.subnet_ids
 
   launch_template {
     id      = aws_launch_template.gpu_nodes_lt.id
@@ -157,7 +137,7 @@ resource "aws_eks_node_group" "gpu_node_group" {
 
   scaling_config {
     desired_size = 2
-    max_size     = 3 # Allows for rolling updates
+    max_size     = 3
     min_size     = 2
   }
 
@@ -181,12 +161,12 @@ resource "aws_eks_node_group" "gpu_node_group" {
   ]
 }
 
+# --- CPU Node Group ---
 resource "aws_eks_node_group" "cpu_node_group" {
   cluster_name    = aws_eks_cluster.cedana_ci_cluster.name
   node_group_name = var.cpu_nodepool_name
   node_role_arn   = aws_iam_role.eks_node_group_role.arn
-  subnet_ids      = [for subnet in aws_subnet.eks_subnet : subnet.id]
-  release_version = data.aws_ssm_parameter.eks_ubuntu_ami_release_version.value
+  subnet_ids      = var.subnet_ids
 
   launch_template {
     id      = aws_launch_template.cpu_nodes_lt.id
@@ -217,5 +197,55 @@ resource "aws_eks_node_group" "cpu_node_group" {
     aws_iam_role_policy_attachment.eks_cni_policy,
     aws_iam_role_policy_attachment.ec2_container_registry_read_only,
   ]
+}
+
+# --------------------------------------------------------------------------------------------------
+# Kubernetes Provider and Auth Configuration
+# --------------------------------------------------------------------------------------------------
+
+provider "kubernetes" {
+  host                   = aws_eks_cluster.cedana_ci_cluster.endpoint
+  cluster_ca_certificate = base64decode(aws_eks_cluster.cedana_ci_cluster.certificate_authority[0].data)
+
+  # This exec block configures the provider to use 'aws eks get-token' to authenticate.
+  # This is the standard way to connect Terraform to an EKS cluster.
+  exec {
+    api_version = "client.authentication.k8s.io/v1beta1"
+    command     = "aws"
+    args        = ["eks", "get-token", "--cluster-name", aws_eks_cluster.cedana_ci_cluster.name]
+  }
+}
+
+# This resource creates the aws-auth ConfigMap in the kube-system namespace.
+# This ConfigMap is critical for allowing IAM roles (like our node group role)
+# to authenticate with the Kubernetes API server.
+resource "kubernetes_config_map" "aws_auth" {
+  # This depends_on is crucial. It ensures the cluster and node groups are created
+  # before Terraform tries to apply this Kubernetes configuration.
+  depends_on = [aws_eks_node_group.cpu_node_group, aws_eks_node_group.gpu_node_group]
+
+  metadata {
+    name      = "aws-auth"
+    namespace = "kube-system"
+  }
+
+  data = {
+    # The mapRoles key maps IAM roles to Kubernetes user and group permissions.
+    mapRoles = yamlencode([
+      {
+        # This maps the IAM role used by our EC2 nodes.
+        rolearn = aws_iam_role.eks_node_group_role.arn
+        # This username template is required by EKS.
+        username = "system:node:{{EC2PrivateDNSName}}"
+        # These groups grant the necessary permissions for a node to join the cluster.
+        groups = [
+          "system:bootstrappers",
+          "system:nodes",
+        ]
+      }
+    ])
+    # The mapUsers key can be used to map IAM users, but we don't need it for nodes.
+    mapUsers = yamlencode([])
+  }
 }
 
