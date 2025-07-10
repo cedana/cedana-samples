@@ -17,7 +17,7 @@ variable "subnet_ids" {
 }
 
 variable "k8s_version" {
-  description = "The Kubernetes version for the EKS cluster. Ensure a Canonical Ubuntu 22.04 AMI exists for this version."
+  description = "The Kubernetes version for the EKS cluster."
   type        = string
   default     = "1.31"
 }
