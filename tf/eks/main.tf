@@ -18,9 +18,11 @@ module "eks" {
       min_size       = 2
       max_size       = 3
       desired_size   = 2
-
+      map_public_ip_on_launch = true
       ami_type = "CUSTOM"
       ami_id   = data.aws_ssm_parameter.eks_ubuntu_ami.value
+      key_name = var.key_pair_name
+      enable_dns_hostnames = true
     }
 
     cpu_pool = {
@@ -29,10 +31,12 @@ module "eks" {
       min_size       = 2
       max_size       = 3
       desired_size   = 2
-
+      map_public_ip_on_launch = true
       # Use the same custom Ubuntu AMI.
       ami_type = "CUSTOM"
       ami_id   = data.aws_ssm_parameter.eks_ubuntu_ami.value
+      key_name = var.key_pair_name
+      enable_dns_hostnames = true
     }
   }
 }

@@ -25,7 +25,13 @@ variable "k8s_version" {
 variable "cluster_name" {
   description = "The name of the EKS cluster."
   type        = string
-  default     = "cedana-ci"
+  default     = "cedana-ci-cluster"
+}
+
+variable "key_pair_name" {
+  description = "The name of the ssh key pair for ec2."
+  type        = string
+  default     = "caltech-workload"
 }
 
 variable "gpu_nodepool_name" {
