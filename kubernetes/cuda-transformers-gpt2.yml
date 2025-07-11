@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: transformers-gpt2
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: transformers-gpt2
+  template:
+    metadata:
+      labels:
+        app: transformers-gpt2
+    spec:
+      runtimeClassName: cedana # required for GPU C/R support (use nvidia for native)
+      containers:
+        - name: transformers-gpt2
+          image: cedana/cedana-samples:cuda12.4-torch2.5
+          command:
+            [
+              "python3",
+              "-u",
+              "/app/gpu_smr/pytorch/llm/transformers_inference.py",
+              "--model",
+              "gpt2",
+            ]
+          resources:
+            limits:
+              nvidia.com/gpu: 1

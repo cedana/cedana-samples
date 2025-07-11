@@ -1,13 +1,22 @@
+import os
+
 from ray.rllib.algorithms.ppo import PPOConfig
 from ray.rllib.connectors.env_to_module import FlattenObservations
 
-import os
-os.environ["CUDA_VISIBLE_DEVICES"] = ""
+
+def handle_exit(signum, frame):
+    sys.exit(1)
+
+
+signal.signal(signal.SIGINT, handle_exit)
+signal.signal(signal.SIGTERM, handle_exit)
+
+os.environ['CUDA_VISIBLE_DEVICES'] = ''
 
 # Configure the algorithm.
 config = (
     PPOConfig()
-    .environment("Taxi-v3")
+    .environment('Taxi-v3')
     .env_runners(
         num_env_runners=2,
         # Observations are discrete (ints) -> We need to flatten (one-hot) them.

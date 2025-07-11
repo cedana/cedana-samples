@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cuda-mem-throughput
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cuda-mem-throughput
+  template:
+    metadata:
+      labels:
+        app: cuda-mem-throughput
+    spec:
+      runtimeClassName: cedana # required for GPU C/R support (use nvidia for native)
+      containers:
+        - name: cuda-mem-throughput
+          image: cedana/cedana-samples:latest
+          args:
+            - -c
+            - gpu_smr/mem-throughput-saxpy-loop
+          resources:
+            limits:
+              nvidia.com/gpu: 1

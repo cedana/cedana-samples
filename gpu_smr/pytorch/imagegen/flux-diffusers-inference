@@ -5,10 +5,10 @@ Diffusers inference (FLUX adapted from Transformers example)
 Run any diffusers FLUX model for inference
 """
 
-import sys
 import os
-from pathlib import Path
 import shutil
+import sys
+from pathlib import Path
 
 import torch
 from diffusers import FluxPipeline
@@ -28,23 +28,23 @@ exec(
 
 def inference(model):
     try:
-        generator_seed0 = torch.Generator("cpu").manual_seed(0)
+        generator_seed0 = torch.Generator('cpu').manual_seed(0)
         pipe = FluxPipeline.from_pretrained(
             model,
             torch_dtype=torch.bfloat16,
-            trust_remote_code=trust_remote_code
+            trust_remote_code=trust_remote_code,
         )
-        pipe.to("cuda")
+        pipe.to('cuda')
 
-# FIXME: Should do warm up inference before final one
-#         pipe(
-#             prompt=prompt,
-#             height=512,
-#             width=512,
-#             num_inference_steps=1,
-#             guidance_scale=3.5,
-#             generator=generator_seed0,
-#         )
+        # FIXME: Should do warm up inference before final one
+        #         pipe(
+        #             prompt=prompt,
+        #             height=512,
+        #             width=512,
+        #             num_inference_steps=1,
+        #             guidance_scale=3.5,
+        #             generator=generator_seed0,
+        #         )
 
         if wait_for_cr:
             print('', flush=True)
@@ -66,15 +66,15 @@ def inference(model):
             guidance_scale=3.5,
             generator=generator_seed0,
         ).images[0]
-        image_output1.save("output.png")
-        print(f"Generated output.png from prompt: \"{prompt}\"")
+        image_output1.save('output.png')
+        print(f'Generated output.png from prompt: "{prompt}"')
 
     except Exception as e:
         raise e
     finally:
         cleanup()
         if wait_for_cr:
-            with open(cr_log_file, 'a') as cr_log: # Appending 'DONE'
+            with open(cr_log_file, 'a') as cr_log:   # Appending 'DONE'
                 print('DONE', file=cr_log, flush=True)
 
 
@@ -82,18 +82,19 @@ def usage():
     print(f'Usage: {sys.argv[0]} <model>')
     sys.exit(1)
 
+
 def cleanup():
     # Only clean if less than 100GB free
     # This will raise an error if shutil.disk_usage fails (e.g. / not accessible),
     # mirroring the directness of the original script.
-    stat = shutil.disk_usage("/")
-    free_gb = stat.free / (1024 ** 3)
+    stat = shutil.disk_usage('/')
+    free_gb = stat.free / (1024**3)
     if free_gb > 100:
         return  # Enough space, skip cleanup
 
     cache_dirs = [
-        Path.home() / ".cache" / "huggingface" / "transformers",
-        Path.home() / ".cache" / "huggingface" / "hub",
+        Path.home() / '.cache' / 'huggingface' / 'transformers',
+        Path.home() / '.cache' / 'huggingface' / 'hub',
     ]
     for cache_dir in cache_dirs:
         if cache_dir.exists():
@@ -101,13 +102,19 @@ def cleanup():
                 try:
                     if item.is_dir():
                         shutil.rmtree(item)
-                    else: # Files or symlinks
+                    else:   # Files or symlinks
                         item.unlink()
                 except Exception as e:
-                    print(f"Failed to remove {item}: {e}")
+                    print(f'Failed to remove {item}: {e}')
+
+
+def handle_exit(signum, frame):
+    sys.exit(1)
 
 
 if __name__ == '__main__':
+    signal.signal(signal.SIGINT, handle_exit)
+    signal.signal(signal.SIGTERM, handle_exit)
     if len(sys.argv) < 2:
         usage()
     model = None

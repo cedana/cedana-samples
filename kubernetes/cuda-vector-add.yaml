@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cuda-vector-add
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cuda-vector-add
+  template:
+    metadata:
+      labels:
+        app: cuda-vector-add
+    spec:
+      runtimeClassName: cedana # required for GPU C/R support (use nvidia for native)
+      containers:
+        - name: cuda-vector-add
+          image: cedana/cedana-samples:latest
+          args:
+            - -c
+            - gpu_smr/vector_add
+          resources:
+            limits:
+              nvidia.com/gpu: 1
