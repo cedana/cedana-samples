@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 
+import signal
+import sys
+
 import torch
 from datasets import load_dataset
 from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor, pipeline

@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 
 import argparse
+import signal
+import sys
 
 from transformers import AutoModelForCausalLM, AutoTokenizer
 

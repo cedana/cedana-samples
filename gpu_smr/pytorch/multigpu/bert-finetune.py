@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 
 import os
+import signal
+import sys
 
 import torch
 import torch.distributed as dist

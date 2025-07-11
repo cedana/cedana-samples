@@ -7,6 +7,7 @@ Finetune any hugging face model
 """
 
 import os
+import signal
 import sys
 
 import evaluate

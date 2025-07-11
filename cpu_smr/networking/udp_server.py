@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 
+import signal
 import socket
+import sys
 import threading
 
 

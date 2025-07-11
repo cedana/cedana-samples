@@ -1,6 +1,8 @@
 # Use for generic transformers inference
 
 import argparse
+import signal
+import sys
 import time
 
 from transformers import AutoModelForCausalLM, AutoTokenizer

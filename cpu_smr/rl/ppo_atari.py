@@ -1,3 +1,6 @@
+import signal
+import sys
+
 import gymnasium as gym
 from ray import tune
 from ray.rllib.algorithms.ppo import PPOConfig

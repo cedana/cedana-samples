@@ -1,4 +1,6 @@
 import os
+import signal
+import sys
 
 import gymnasium as gym
 from ray import tune

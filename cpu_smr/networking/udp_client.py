@@ -1,4 +1,6 @@
+import signal
 import socket
+import sys
 
 
 def handle_exit(signum, frame):

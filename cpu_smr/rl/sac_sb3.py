@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 
 import os
+import signal
+import sys
 
 import gymnasium as gym
 from stable_baselines3 import SAC

@@ -4,6 +4,7 @@ VLLM inference
 Supported models: https://docs.vllm.ai/en/latest/models/supported_models.html
 """
 import argparse
+import signal
 import sys
 
 from vllm import LLM, SamplingParams

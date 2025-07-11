@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+import signal
+import sys
+
 import nemo.collections.asr as nemo_asr
 
 
