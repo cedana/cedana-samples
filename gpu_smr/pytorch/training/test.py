@@ -5,7 +5,7 @@ import torch.optim as optim
 
 # Config
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-epochs = 10
+epochs = 100000
 batch_size = 64
 lr = 0.01
 input_size = 100
