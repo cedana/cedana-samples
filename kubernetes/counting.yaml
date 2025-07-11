@@ -1,21 +1,12 @@
 apiVersion: apps/v1
-kind: Deployment
+kind: Pod
 metadata:
   name: counting
   namespace: default
 spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: counting
-  template:
-    metadata:
-      labels:
-        app: counting
-    spec:
-      containers:
-        - name: counting
-          image: cedana/cedana-samples:latest
-          args:
-            - -c
-            - cpu_smr/counting.sh
+  containers:
+    - name: counting
+      image: cedana/cedana-samples:latest
+      args:
+        - -c
+        - cpu_smr/counting.sh
