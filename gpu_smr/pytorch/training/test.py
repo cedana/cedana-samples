@@ -1,29 +1,28 @@
 #!/usr/bin/env python3
-
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torchvision import datasets, transforms
 
 # Config
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 epochs = 10
 batch_size = 64
 lr = 0.01
+input_size = 100
+num_classes = 10
+num_samples = 10000
 
-# Dummy dataset (MNIST)
-train_loader = torch.utils.data.DataLoader(
-    datasets.MNIST('.', train=True, download=True,
-                   transform=transforms.ToTensor()),
-    batch_size=batch_size, shuffle=True
-)
+# Synthetic data
+X = torch.randn(num_samples, input_size)
+y = torch.randint(0, num_classes, (num_samples,))
+dataset = torch.utils.data.TensorDataset(X, y)
+loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
-# Simple model
+# Model
 model = nn.Sequential(
-    nn.Flatten(),
-    nn.Linear(28*28, 128),
+    nn.Linear(input_size, 128),
     nn.ReLU(),
-    nn.Linear(128, 10)
+    nn.Linear(128, num_classes)
 ).to(device)
 
 # Loss and optimizer
@@ -34,7 +33,7 @@ optimizer = optim.SGD(model.parameters(), lr=lr)
 for epoch in range(1, epochs + 1):
     model.train()
     running_loss = 0.0
-    for i, (inputs, labels) in enumerate(train_loader):
+    for inputs, labels in loader:
         inputs, labels = inputs.to(device), labels.to(device)
 
         optimizer.zero_grad()
@@ -45,5 +44,5 @@ for epoch in range(1, epochs + 1):
 
         running_loss += loss.item()
 
-    avg_loss = running_loss / len(train_loader)
+    avg_loss = running_loss / len(loader)
     print(f"Epoch {epoch}/{epochs} - Loss: {avg_loss:.4f}")
