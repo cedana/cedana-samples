@@ -1,0 +1,28 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: transformers-stablelm
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: transformers-stablelm
+  template:
+    metadata:
+      labels:
+        app: transformers-stablelm
+    spec:
+      runtimeClassName: cedana # required for GPU C/R support (use nvidia for native)
+      containers:
+        - name: transformers-stablelm
+          image: cedana/cedana-samples:cuda12.4-torch2.5
+          command:
+            [
+              "python3",
+              "-u",
+              "/app/gpu_smr/pytorch/llm/transformers_inference.py",
+            ]
+          resources:
+            limits:
+              nvidia.com/gpu: 1
