@@ -31,6 +31,7 @@ WORKDIR /app
 # Copy only necessary source files
 COPY cpu_smr/ /app/cpu_smr/
 COPY gpu_smr/ /app/gpu_smr/
+COPY kubernetes/ /app/kubernetes/
 
 # Build GPU workloads and CPU workloads in a single layer
 RUN <<EOT
