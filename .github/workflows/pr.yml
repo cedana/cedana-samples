@@ -20,6 +20,14 @@ jobs:
       image: true
       image_name: cedana/cedana-samples-test
 
+  build_compbio:
+    name: BuildCompBio
+    uses: ./.github/workflows/build_compbio.yml
+    secrets: Inherit
+    with:
+      image: true
+      image_name: cedana/cedana-samples-compbio-test
+
   publish:
     name: Publish
     uses: ./.github/workflows/publish.yml
