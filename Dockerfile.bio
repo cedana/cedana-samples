@@ -59,7 +59,13 @@ RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86
     && rm /tmp/miniconda.sh \
     && $CONDA_DIR/bin/conda clean -afy
 
-# setup bindcraft (which activates env)
+# install BindCraft
+RUN <<EOT
+set -eux
+cd /app/gpu_smr/compbio/bindcraft
+bash -c ./setup_bindcraft.sh
+EOT
+
 
 
 ENTRYPOINT ["/bin/bash"]
