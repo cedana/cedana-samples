@@ -8,6 +8,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     wget \
     git \
     curl \
+    build-essential \
     unzip \
     python3-pip \
     openmpi-bin \
