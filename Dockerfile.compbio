@@ -40,6 +40,9 @@ SHELL ["/bin/bash", "-c"]
 RUN <<EOT
     set -eux
     source "$CONDA_DIR/etc/profile.d/conda.sh"
+    conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/main
+    conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/r
+
     conda activate base
     cd /app/gpu_smr/compbio/bindcraft
     bash ./setup_bindcraft.sh
