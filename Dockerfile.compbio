@@ -80,5 +80,12 @@ cd /app/gpu_smr/compbio/chai-1
 bash -c ./setup_chai.sh
 EOT
 
+# setup openmm
+RUN <<EOT
+set -eux
+cd /app/gpu_smr/compbio/openmm
+bash -c ./setup_openmm.sh
+EOT
+
 
 ENTRYPOINT ["/bin/bash"]
