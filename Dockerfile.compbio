@@ -25,6 +25,12 @@ RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86
     && rm /tmp/miniconda.sh \
     && conda clean -afy
 
+RUN conda config --set channel_priority strict && \
+    conda config --add channels conda-forge && \
+    conda config --add channels bioconda && \
+    conda clean -afy
+
+
 WORKDIR /app
 COPY requirements-compbio.txt /app/requirements.txt
 
