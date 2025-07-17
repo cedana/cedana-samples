@@ -78,7 +78,7 @@ RUN <<EOT
 set -eux
 cd /app/gpu_smr/compbio/chai-1
 bash -c ./setup_chai.sh
-
+EOT
 
 
 ENTRYPOINT ["/bin/bash"]
