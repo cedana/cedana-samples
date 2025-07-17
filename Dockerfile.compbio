@@ -1,91 +1,59 @@
-FROM phusion/baseimage:latest
+FROM nvidia/cuda:12.4.0-runtime-ubuntu22.04
     MAINTAINER Niranjan Ravichandra <nravic@cedana-linux>
 
-ARG CUDA_VERSION=12.4
-
-FROM nvidia/cuda:12.4.0-devel-ubuntu22.04 AS builder
-
 ENV DEBIAN_FRONTEND=noninteractive
-LABEL maintainer="Niranjan Ravichandra <nravic@cedana.ai>"
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl \
-    unzip \
+    python3 \
     wget \
     git \
-    python3 \
-    python3-venv \
-    python3-pip \
-    cmake \
-    build-essential \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/* \
-    && rm -rf /tmp/* /var/tmp/*
-
-WORKDIR /app
-
-COPY cpu_smr/ /app/cpu_smr/
-COPY gpu_smr/ /app/gpu_smr/
-
-FROM nvidia/cuda:12.4.0-runtime-ubuntu22.04 AS runtime
-
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    python3 \
-    wget \
-    git \ 
-    curl \ 
+    curl \
     unzip \
     python3-pip \
     openmpi-bin \
     && apt-get clean \
-    && rm -rf /var/lib/apt/lists/* \
-    && rm -rf /tmp/* /var/tmp/*
+    && rm -rf /var/lib/apt/lists/*
 
-COPY --from=builder /app /app
+ENV CONDA_DIR=/opt/conda
+ENV PATH=$CONDA_DIR/bin:$PATH
+ENV SHELL=/bin/bash
+
+# Install Miniconda
+RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O /tmp/miniconda.sh \
+    && bash /tmp/miniconda.sh -b -p $CONDA_DIR \
+    && rm /tmp/miniconda.sh \
+    && conda clean -afy
 
 WORKDIR /app
-
 COPY requirements-compbio.txt /app/requirements.txt
 
 RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir -r requirements.txt \
-    && rm -rf /root/.cache/pip \
-    && rm -rf /tmp/* /var/tmp/*
+    && rm -rf /root/.cache/pip
 
-# install conda
-# Install Miniconda and create environment
-ENV CONDA_DIR=/opt/conda
-ENV PATH=$CONDA_DIR/bin:$PATH
+COPY cpu_smr/ /app/cpu_smr/
+COPY gpu_smr/ /app/gpu_smr/
 
-RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O /tmp/miniconda.sh \
-    && bash /tmp/miniconda.sh -b -p $CONDA_DIR \
-    && rm /tmp/miniconda.sh \
-    && $CONDA_DIR/bin/conda clean -afy
 
-RUN $CONDA_DIR/bin/conda init bash \
- && $CONDA_DIR/bin/conda tos accept --channel https://repo.anaconda.com/pkgs/main \
- && $CONDA_DIR/bin/conda tos accept --channel https://repo.anaconda.com/pkgs/r
-
-# install BindCraft
 RUN <<EOT
-set -eux
-cd /app/gpu_smr/compbio/bindcraft
-bash -c ./setup_bindcraft.sh
+    set -eux
+    source "$CONDA_DIR/etc/profile.d/conda.sh"
+    conda activate base
+    cd /app/gpu_smr/compbio/bindcraft
+    bash ./setup_bindcraft.sh
 EOT
 
-# setup chai
 RUN <<EOT
-set -eux
-cd /app/gpu_smr/compbio/chai-1
-bash -c ./setup_chai.sh
+    set -eux
+    cd /app/gpu_smr/compbio/chai-1
+    bash ./setup_chai.sh
 EOT
 
-# setup openmm
 RUN <<EOT
-set -eux
-cd /app/gpu_smr/compbio/openmm
-bash -c ./setup_openmm.sh
+    set -eux
+    cd /app/gpu_smr/compbio/openmm
+    bash ./setup_openmm.sh
 EOT
 
-
-ENTRYPOINT ["/bin/bash"]
+# This ENTRYPOINT will give you a bash shell with conda activated
+ENTRYPOINT ["/bin/bash", "-c", "source /opt/conda/etc/profile.d/conda.sh && conda activate base && /bin/bash"]
