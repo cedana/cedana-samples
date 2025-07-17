@@ -18,6 +18,13 @@ jobs:
     with:
       image: true
 
+  build_compbio:
+    name: BuildCompBio
+    uses: ./.github/workflows/build_compbio.yml
+    secrets: inherit
+    with:
+      image: true
+
   publish:
     name: Publish
     uses: ./.github/workflows/publish.yml

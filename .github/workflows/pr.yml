@@ -23,7 +23,7 @@ jobs:
   build_compbio:
     name: BuildCompBio
     uses: ./.github/workflows/build_compbio.yml
-    secrets: Inherit
+    secrets: inherit
     with:
       image: true
       image_name: cedana/cedana-samples-compbio-test
