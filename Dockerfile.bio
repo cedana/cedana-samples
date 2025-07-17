@@ -3,7 +3,7 @@ FROM phusion/baseimage:latest
 
 ARG CUDA_VERSION=12.4
 
-FROM nvidia/cuda:${CUDA_VERSION}.0-devel-ubuntu22.04 AS builder
+FROM nvidia/cuda:12.4.0-devel-ubuntu22.04 AS builder
 
 ENV DEBIAN_FRONTEND=noninteractive
 LABEL maintainer="Niranjan Ravichandra <nravic@cedana.ai>"
@@ -27,11 +27,14 @@ WORKDIR /app
 COPY cpu_smr/ /app/cpu_smr/
 COPY gpu_smr/ /app/gpu_smr/
 
-
-FROM nvidia/cuda:${CUDA_VERSION}.0-runtime-ubuntu22.04 AS runtime
+FROM nvidia/cuda:12.4.0-runtime-ubuntu22.04 AS runtime
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 \
+    wget \
+    git \ 
+    curl \ 
+    unzip \
     python3-pip \
     openmpi-bin \
     && apt-get clean \
