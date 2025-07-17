@@ -1,23 +1,29 @@
 #!/usr/bin/env python3
 
 import os
+import signal
+import sys
+
 import torch
 import torch.distributed as dist
+from datasets import load_dataset
 from torch.nn.parallel import DistributedDataParallel as DDP
+from torch.optim import AdamW
 from torch.utils.data import DataLoader, DistributedSampler
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
-from torch.optim import AdamW
-from datasets import load_dataset
+
 
 # Initialize the distributed environment
 def setup(rank, world_size):
     os.environ['MASTER_ADDR'] = 'localhost'
     os.environ['MASTER_PORT'] = '12355'
-    dist.init_process_group("nccl", rank=rank, world_size=world_size)
+    dist.init_process_group('nccl', rank=rank, world_size=world_size)
+
 
 # Clean up the distributed process group
 def cleanup():
     dist.destroy_process_group()
+
 
 # Simple training loop
 def train(rank, world_size, model, tokenizer, dataset, epochs=3):
@@ -29,15 +35,24 @@ def train(rank, world_size, model, tokenizer, dataset, epochs=3):
 
     # Tokenize the dataset
     def tokenize_function(examples):
-        return tokenizer(examples['text'], padding="max_length", truncation=True, max_length=512)
+        return tokenizer(
+            examples['text'],
+            padding='max_length',
+            truncation=True,
+            max_length=512,
+        )
 
     tokenized_dataset = dataset.map(tokenize_function, batched=True)
 
     # Convert the dataset to PyTorch tensors
-    tokenized_dataset.set_format(type='torch', columns=['input_ids', 'attention_mask', 'label'])
+    tokenized_dataset.set_format(
+        type='torch', columns=['input_ids', 'attention_mask', 'label']
+    )
 
     # Create a DistributedSampler to handle data partitioning
-    sampler = DistributedSampler(tokenized_dataset, num_replicas=world_size, rank=rank)
+    sampler = DistributedSampler(
+        tokenized_dataset, num_replicas=world_size, rank=rank
+    )
     dataloader = DataLoader(tokenized_dataset, batch_size=16, sampler=sampler)
 
     optimizer = AdamW(model.parameters(), lr=5e-5)
@@ -49,7 +64,7 @@ def train(rank, world_size, model, tokenizer, dataset, epochs=3):
             optimizer.zero_grad()
             inputs = {
                 'input_ids': batch['input_ids'].to(rank),
-                'attention_mask': batch['attention_mask'].to(rank)
+                'attention_mask': batch['attention_mask'].to(rank),
             }
             labels = batch['label'].to(rank)
             outputs = model(**inputs, labels=labels)
@@ -57,28 +72,45 @@ def train(rank, world_size, model, tokenizer, dataset, epochs=3):
             loss.backward()
             optimizer.step()
             if rank == 0 and i % 10 == 0:  # Log every 10 batches
-                print(f"Epoch {epoch}, Batch {i}, Loss: {loss.item()}", flush=True)
+                print(
+                    f'Epoch {epoch}, Batch {i}, Loss: {loss.item()}',
+                    flush=True,
+                )
 
     # Save the model on rank 0
     if rank == 0:
-        model_save_path = "fine_tuned_model"
+        model_save_path = 'fine_tuned_model'
         model.module.save_pretrained(model_save_path)
         tokenizer.save_pretrained(model_save_path)
-        print(f"Model saved to {model_save_path}")
+        print(f'Model saved to {model_save_path}')
 
     cleanup()
 
-if __name__ == "__main__":
+
+def handle_exit(signum, frame):
+    sys.exit(1)
+
+
+if __name__ == '__main__':
+    signal.signal(signal.SIGINT, handle_exit)
+    signal.signal(signal.SIGTERM, handle_exit)
     world_size = torch.cuda.device_count()
     if world_size < 2:
-        raise RuntimeError("This script requires at least 2 GPUs to run.")
+        raise RuntimeError('This script requires at least 2 GPUs to run.')
 
-    model_name = "bert-base-uncased"
+    model_name = 'bert-base-uncased'
     tokenizer = AutoTokenizer.from_pretrained(model_name)
-    model = AutoModelForSequenceClassification.from_pretrained(model_name, num_labels=2)
+    model = AutoModelForSequenceClassification.from_pretrained(
+        model_name, num_labels=2
+    )
 
     # Load a dataset (e.g., IMDB for binary classification)
-    dataset = load_dataset("imdb")['train']
+    dataset = load_dataset('imdb')['train']
 
     # Launch the training process on multiple GPUs
-    torch.multiprocessing.spawn(train, args=(world_size, model, tokenizer, dataset), nprocs=world_size, join=True)
+    torch.multiprocessing.spawn(
+        train,
+        args=(world_size, model, tokenizer, dataset),
+        nprocs=world_size,
+        join=True,
+    )

@@ -26,6 +26,7 @@ WORKDIR /app
 
 COPY cpu_smr/ /app/cpu_smr/
 COPY gpu_smr/ /app/gpu_smr/
+COPY kubernetes/ /app/kubernetes/
 
 RUN <<EOT
 set -eux

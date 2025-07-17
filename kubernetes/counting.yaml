@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: counting
+  namespace: default
+spec:
+  containers:
+    - name: counting
+      image: cedana/cedana-samples:latest
+      args:
+        - -c
+        - cpu_smr/counting.sh

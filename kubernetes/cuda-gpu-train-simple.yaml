@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: transformers-stablelm
+  namespace: default
+spec:
+  runtimeClassName: cedana # required for GPU C/R support (use nvidia for native)
+  containers:
+    - name: transformers-stablelm
+      image: cedana/cedana-samples:cuda12.4-torch2.5
+      command:
+        ["python3", "-u", "/app/gpu_smr/training/test.py"]
+      resources:
+        limits:
+          nvidia.com/gpu: 1
