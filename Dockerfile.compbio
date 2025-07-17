@@ -73,6 +73,12 @@ cd /app/gpu_smr/compbio/bindcraft
 bash -c ./setup_bindcraft.sh
 EOT
 
+# setup chai
+RUN <<EOT
+set -eux
+cd /app/gpu_smr/compbio/chai-1
+bash -c ./setup_chai.sh
+
 
 
 ENTRYPOINT ["/bin/bash"]
