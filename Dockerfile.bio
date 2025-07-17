@@ -62,6 +62,10 @@ RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86
     && rm /tmp/miniconda.sh \
     && $CONDA_DIR/bin/conda clean -afy
 
+RUN $CONDA_DIR/bin/conda init bash \
+ && $CONDA_DIR/bin/conda tos accept --channel https://repo.anaconda.com/pkgs/main \
+ && $CONDA_DIR/bin/conda tos accept --channel https://repo.anaconda.com/pkgs/r
+
 # install BindCraft
 RUN <<EOT
 set -eux
