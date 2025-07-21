@@ -51,14 +51,13 @@ jobs:
       fail-fast: false
       matrix:
         cuda_version:
-          - 11.8
           - 12.2
           - 12.4
           - 12.8
         torch_version:
-          - 2.4
           - 2.5
           - 2.6
+          - 2.7
     permissions:
       contents: read
       packages: write
@@ -87,7 +86,7 @@ jobs:
           tags: |
             type=raw,value=cuda${{ matrix.cuda_version }}-torch${{ matrix.torch_version }}
             type=raw,value=${{ github.head_ref || github.ref_name }}-cuda${{ matrix.cuda_version }}-torch${{ matrix.torch_version }}
-            ${{ (matrix.cuda_version == '12.4' && matrix.torch_version == '2.4') && 'type=raw,value=latest' || '' }}
+            ${{ (matrix.cuda_version == '12.4' && matrix.torch_version == '2.5') && 'type=raw,value=latest' || '' }}
 
       - name: Create manifest list and push
         working-directory: /tmp/digests

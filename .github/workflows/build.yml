@@ -28,19 +28,18 @@ jobs:
   image:
     name: Image
     if: ${{ inputs.image }}
-    runs-on: runs-on=${{github.run_id}}/runner=4cpu-16g-${{ matrix.arch }}/extras=s3-cache
+    runs-on: runs-on=${{github.run_id}}/runner=4cpu-16g-${{ matrix.arch }}/tag=${{ matrix.cuda_version }}-${{ matrix.torch_version }}/extras=s3-cache
     strategy:
       fail-fast: false
       matrix:
         cuda_version:
-          - 11.8
           - 12.2
           - 12.4
           - 12.8
         torch_version:
-          - 2.4
           - 2.5
           - 2.6
+          - 2.7
         arch:
           - amd64
           - arm64
