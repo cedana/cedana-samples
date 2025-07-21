@@ -1,3 +1,4 @@
+# TODO - This image is too large, so NOT part of CI for now.
 FROM nvidia/cuda:12.4.0-runtime-ubuntu22.04
     MAINTAINER Niranjan Ravichandra <nravic@cedana-linux>
 

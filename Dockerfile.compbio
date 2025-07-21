@@ -19,18 +19,6 @@ ENV CONDA_DIR=/opt/conda
 ENV PATH=$CONDA_DIR/bin:$PATH
 ENV SHELL=/bin/bash
 
-# Install Miniconda
-RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O /tmp/miniconda.sh \
-    && bash /tmp/miniconda.sh -b -p $CONDA_DIR \
-    && rm /tmp/miniconda.sh \
-    && conda clean -afy
-
-RUN conda config --set channel_priority strict && \
-    conda config --add channels conda-forge && \
-    conda config --add channels bioconda && \
-    conda clean -afy
-
-
 WORKDIR /app
 COPY requirements-compbio.txt /app/requirements.txt
 
@@ -41,30 +29,18 @@ RUN pip install --no-cache-dir --upgrade pip \
 COPY cpu_smr/ /app/cpu_smr/
 COPY gpu_smr/ /app/gpu_smr/
 
-SHELL ["/bin/bash", "-c"]
-
-RUN <<EOT
-    set -eux
-    source "$CONDA_DIR/etc/profile.d/conda.sh"
-    conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/main
-    conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/r
-
-    conda activate base
-    cd /app/gpu_smr/compbio/bindcraft
-    bash ./setup_bindcraft.sh
-EOT
-
+# Chai-1 model
 RUN <<EOT
     set -eux
     cd /app/gpu_smr/compbio/chai-1
     bash ./setup_chai.sh
 EOT
 
+# OpenMM model
 RUN <<EOT
     set -eux
     cd /app/gpu_smr/compbio/openmm
     bash ./setup_openmm.sh
 EOT
 
-# This ENTRYPOINT will give you a bash shell with conda activated
-ENTRYPOINT ["/bin/bash", "-c", "source /opt/conda/etc/profile.d/conda.sh && conda activate base && /bin/bash"]
+ENTRYPOINT ["/bin/bash", "-c"]
