@@ -9,7 +9,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     curl \
     build-essential \
-    sudo apt install libssl-dev \
+    libssl-dev \
     unzip \
     python3-pip \
     openmpi-bin \
