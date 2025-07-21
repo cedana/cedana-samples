@@ -37,3 +37,13 @@ jobs:
       image_name: cedana/cedana-samples-test
       dockerhub: true
       post_summary: false
+
+  publish_compbio:
+    name: Publish CompBio
+    uses: ./.github/workflows/publish_compbio.yml
+    needs: build_compbio
+    secrets: inherit
+    with:
+      image_name: cedana/cedana-samples-compbio-test
+      dockerhub: true
+      post_summary: true
