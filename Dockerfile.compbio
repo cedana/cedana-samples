@@ -9,7 +9,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     curl \
     build-essential \
-    cmake \
     unzip \
     python3-pip \
     openmpi-bin \
@@ -29,6 +28,21 @@ RUN pip install --no-cache-dir --upgrade pip \
 
 COPY cpu_smr/ /app/cpu_smr/
 COPY gpu_smr/ /app/gpu_smr/
+
+# Install CMake 3.28.3 from source
+RUN <<EOT
+    set -eux
+    CMAKE_VERSION=3.28.3
+    cd /tmp
+    curl -fsSL -O https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}.tar.gz
+    tar -xzf cmake-${CMAKE_VERSION}.tar.gz
+    cd cmake-${CMAKE_VERSION}
+    ./bootstrap --prefix=/usr/local
+    make -j$(nproc)
+    make install
+    cd /
+    rm -rf /tmp/cmake-${CMAKE_VERSION} /tmp/cmake-${CMAKE_VERSION}.tar.gz
+EOT
 
 # Chai-1 model
 RUN <<EOT
