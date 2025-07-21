@@ -43,4 +43,11 @@ RUN <<EOT
     bash ./setup_openmm.sh
 EOT
 
+# GROMACS build
+RUN <<EOT
+    set -eux
+    cd /app/gpu_smr/compbio/gromacs
+    bash ./build_once.sh
+EOT
+
 ENTRYPOINT ["/bin/bash", "-c"]
