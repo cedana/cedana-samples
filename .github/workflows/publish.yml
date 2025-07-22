@@ -18,6 +18,11 @@ on:
         description: "Name of the image to publish"
         required: false
         default: cedana/cedana-samples
+     compbio:
+       type: boolean
+       description: "Publish compBio tag"
+       required: false
+       default: false
       post_summary:
         type: boolean
         description: "Post summary to Slack"
