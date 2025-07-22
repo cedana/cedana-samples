@@ -31,6 +31,7 @@ COPY kubernetes/ /app/kubernetes/
 RUN <<EOT
 set -eux
 cd /app/gpu_smr
+export CMAKE_BUILD_PARALLEL_LEVEL=$(nproc)
 cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
 cmake --build build --parallel $(nproc)
 find /app/gpu_smr/build -type f -executable -exec mv {} /app/gpu_smr \;
