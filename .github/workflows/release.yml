@@ -17,13 +17,7 @@ jobs:
     secrets: inherit
     with:
       image: true
-
-  build_compbio:
-    name: BuildCompBio
-    uses: ./.github/workflows/build_compbio.yml
-    secrets: inherit
-    with:
-      image: true
+      compbio: true
 
   publish:
     name: Publish
@@ -34,13 +28,4 @@ jobs:
       github: true
       dockerhub: true
       post_summary: true
-
-  publish_compbio:
-    name: Publish CompBio
-    uses: ./.github/workflows/publish_compbio.yml
-    needs: build_compbio
-    secrets: inherit
-    with:
-      github: true
-      dockerhub: true
-      post_summary: true
+      compbio: true
