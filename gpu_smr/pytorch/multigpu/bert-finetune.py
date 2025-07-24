@@ -18,6 +18,7 @@ from transformers import AutoModelForSequenceClassification, AutoTokenizer
 # Global variable to store pre-opened log file descriptor
 _log_fd = None
 _log_file_path = None
+_process_id = None
 
 
 # Initialize the distributed environment
@@ -32,40 +33,45 @@ def cleanup():
     dist.destroy_process_group()
 
 
-def setup_signal_handlers(rank=None):
-    """Set up signal handlers for the process"""
-    global _log_fd, _log_file_path
+def setup_signal_handlers(rank):
+    """Set up signal handlers for child processes only"""
+    global _log_fd, _log_file_path, _process_id
     
     # Ensure /tmp/log directory exists
     os.makedirs('/tmp/log', exist_ok=True)
     
     # Pre-open log file to avoid file operations in signal handler
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    process_id = f"rank_{rank}" if rank is not None else "main"
-    _log_file_path = f'/tmp/log/sigbus_{process_id}_{timestamp}.log'
+    _process_id = f"rank_{rank}"
+    _log_file_path = f'/tmp/log/sigbus_{_process_id}_{timestamp}.log'
     
     try:
         _log_fd = os.open(_log_file_path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o644)
         # Write initial header
-        header = f"SIGBUS log for process {process_id} (PID: {os.getpid()})\n"
+        header = f"SIGBUS log for process {_process_id} (PID: {os.getpid()})\n"
+        header += f"Signal mask: {signal.pthread_sigmask(signal.SIG_BLOCK, set())}\n"
+        header += f"Started at: {datetime.now()}\n"
         os.write(_log_fd, header.encode('utf-8'))
+        os.fsync(_log_fd)
     except Exception as e:
         print(f"Failed to create log file {_log_file_path}: {e}", flush=True)
         _log_fd = None
+        return
     
     def handle_sigbus(signum, frame):
         """Handle SIGBUS signal - minimal async-signal-safe operations only"""
         try:
-            # Use os.write for async-signal-safe file writing
             if _log_fd is not None:
-                msg = f"\nSIGBUS received at PID {os.getpid()}\n"
+                timestamp = datetime.now().strftime('%H:%M:%S')
+                msg = f"\n[{timestamp}] *** SIGBUS RECEIVED *** at PID {os.getpid()}\n"
                 os.write(_log_fd, msg.encode('utf-8'))
                 
-                # Try to get basic stack info (risky but worth attempting)
+                # Try to get basic stack info
                 try:
                     import traceback
                     tb_lines = traceback.format_stack(frame)
-                    for line in tb_lines[-10:]:  # Last 10 stack frames
+                    os.write(_log_fd, b"Stack trace (last 10 frames):\n")
+                    for line in tb_lines[-10:]:
                         os.write(_log_fd, line.encode('utf-8'))
                 except:
                     os.write(_log_fd, b"Failed to capture traceback\n")
@@ -73,41 +79,27 @@ def setup_signal_handlers(rank=None):
                 # Sync to ensure data is written
                 os.fsync(_log_fd)
             
-            # Also try to print to stderr (usually works)
-            print(f"\nSIGBUS in process {process_id if rank is not None else 'main'} - check {_log_file_path}", file=sys.stderr, flush=True)
+            # Also print to stderr
+            print(f"\n*** SIGBUS in process {_process_id} - check {_log_file_path} ***", file=sys.stderr, flush=True)
             
         except:
-            # If even basic operations fail, try stderr
             try:
                 print(f"SIGBUS in PID {os.getpid()}", file=sys.stderr)
             except:
                 pass
         
-        # Force immediate exit - don't try cleanup
+        # Force immediate exit
         os._exit(128 + signal.SIGBUS)
     
-    def handle_exit(signum, frame):
-        """Handle normal exit signals"""
-        if _log_fd is not None:
-            try:
-                msg = f"\nReceived signal {signum}, exiting gracefully\n"
-                os.write(_log_fd, msg.encode('utf-8'))
-                os.close(_log_fd)
-            except:
-                pass
-        sys.exit(1)
-    
-    # Set up signal handlers
+    # Only set up SIGBUS handler - don't interfere with PyTorch's SIGTERM handling
     signal.signal(signal.SIGBUS, handle_sigbus)
-    signal.signal(signal.SIGINT, handle_exit)
-    signal.signal(signal.SIGTERM, handle_exit)
     
-    print(f"Signal handlers set up for {process_id}, logging to {_log_file_path}", flush=True)
+    print(f"SIGBUS handler set up for {_process_id}, logging to {_log_file_path}", flush=True)
 
 
 # Simple training loop
 def train(rank, world_size, model, tokenizer, dataset, epochs=3):
-    # Set up signal handlers for this child process
+    # Set up signal handlers for this child process only
     setup_signal_handlers(rank)
     
     setup(rank, world_size)
@@ -171,8 +163,7 @@ def train(rank, world_size, model, tokenizer, dataset, epochs=3):
 
 
 if __name__ == '__main__':
-    # Set up signal handlers for the main process
-    setup_signal_handlers()
+    # NO signal handlers in main process - let PyTorch handle everything
     
     world_size = torch.cuda.device_count()
     if world_size < 2:
