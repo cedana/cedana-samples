@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: Pod
 metadata:
-  generateName: transformers-gpt2-
+  name: transformers-stablelm
   namespace: default
 spec:
   runtimeClassName: cedana # required for GPU C/R support (use nvidia for native)
