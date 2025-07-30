@@ -17,8 +17,8 @@ spec:
       readinessProbe:
         tcpSocket:
           port: 8888
-        initialDelaySeconds: 2
-        periodSeconds: 2
+        initialDelaySeconds: 1
+        periodSeconds: 1
         timeoutSeconds: 1
       resources:
         limits:
