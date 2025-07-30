@@ -2,9 +2,10 @@
 
 import argparse
 import signal
-import sys
-import time
 import socket
+import sys
+import threading
+import time
 
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
@@ -52,8 +53,16 @@ model.cuda()
 # Sleep for the specified duration
 time.sleep(args.sleep)
 
+
+def readiness_accept_loop(sock):
+    while True:
+        conn, addr = sock.accept()
+        conn.close()
+
+
 readiness_socket = None
 first_pass = True
+
 while True:
     user_input = 'some prompt'
     # Tokenize input
@@ -72,10 +81,19 @@ while True:
     if first_pass:
         # Open TCP socket for k8s readiness (only opens once)
         try:
-            readiness_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            readiness_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            readiness_socket = socket.socket(
+                socket.AF_INET, socket.SOCK_STREAM
+            )
+            readiness_socket.setsockopt(
+                socket.SOL_SOCKET, socket.SO_REUSEADDR, 1
+            )
             readiness_socket.bind(('0.0.0.0', args.readiness_port))
             readiness_socket.listen(1)
+            threading.Thread(
+                target=readiness_accept_loop,
+                args=(readiness_socket,),
+                daemon=True,
+            ).start()
             print(f'Readiness TCP socket open on port {args.readiness_port}')
         except Exception as e:
             print(f'Failed to open readiness socket: {e}')
