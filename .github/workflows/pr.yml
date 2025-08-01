@@ -18,6 +18,7 @@ jobs:
     secrets: inherit
     with:
       image: true
+      compbio: true
       image_name: cedana/cedana-samples-test
 
   publish:
@@ -29,3 +30,4 @@ jobs:
       image_name: cedana/cedana-samples-test
       dockerhub: true
       post_summary: false
+      compbio: true

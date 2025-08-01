@@ -1,0 +1,64 @@
+FROM nvidia/cuda:12.4.0-runtime-ubuntu22.04
+    MAINTAINER Niranjan Ravichandra <nravic@cedana-linux>
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 \
+    wget \
+    git \
+    curl \
+    build-essential \
+    libssl-dev \
+    unzip \
+    python3-pip \
+    openmpi-bin \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+ENV CONDA_DIR=/opt/conda
+ENV PATH=$CONDA_DIR/bin:$PATH
+ENV SHELL=/bin/bash
+
+WORKDIR /app
+COPY requirements-compbio.txt /app/requirements.txt
+
+RUN pip install --no-cache-dir --upgrade pip \
+    && pip install --no-cache-dir -r requirements.txt \
+    && rm -rf /root/.cache/pip
+
+COPY cpu_smr/ /app/cpu_smr/
+COPY gpu_smr/ /app/gpu_smr/
+
+RUN <<EOT
+    set -eux
+    CMAKE_VERSION=3.28.3
+    ARCH=linux-x86_64
+    cd /tmp
+    curl -fsSL -O https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}-${ARCH}.tar.gz
+    tar --strip-components=1 -xzf cmake-${CMAKE_VERSION}-${ARCH}.tar.gz -C /usr/local
+    rm -rf /tmp/cmake-${CMAKE_VERSION}-${ARCH}.tar.gz
+EOT
+
+# Chai-1 model
+RUN <<EOT
+    set -eux
+    cd /app/gpu_smr/compbio/chai-1
+    bash ./setup_chai.sh
+EOT
+
+# OpenMM model
+RUN <<EOT
+    set -eux
+    cd /app/gpu_smr/compbio/openmm
+    bash ./setup_openmm.sh
+EOT
+
+# GROMACS build
+RUN <<EOT
+    set -eux
+    cd /app/gpu_smr/compbio/gromacs
+    bash ./build_once.sh
+EOT
+
+ENTRYPOINT ["/bin/bash", "-c"]
