@@ -21,6 +21,3 @@ make install
 # Ensure runtime linker finds the GROMACS shared libraries
 echo "/usr/local/lib" >/etc/ld.so.conf.d/gromacs.conf
 ldconfig
-
-# Make gmx binary easily available
-cp /usr/local/bin/gmx /usr/local/bin/gmx
