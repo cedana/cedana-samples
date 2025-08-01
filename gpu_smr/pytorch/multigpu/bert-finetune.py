@@ -38,31 +38,18 @@ def setup_signal_handlers(rank, world_size=1):
     """Set up signal handlers for child processes only"""
     global _log_fd, _log_file_path, _process_id
     
-    print(f"[DEBUG] Setting up signal handlers for rank {rank}, PID {os.getpid()}", flush=True)
+    print(f"[DEBUG] Checking signal handler setup for rank {rank}, PID {os.getpid()}", flush=True)
     
     _process_id = f"rank_{rank}"
     
     if world_size > 1:
-        # Distributed mode: Use minimal handler to avoid PyTorch interference
-        print(f"[DEBUG] Distributed mode detected - using minimal SIGBUS handler", flush=True)
-        
-        def handle_sigbus_minimal(signum, frame):
-            """Minimal SIGBUS handler for distributed mode"""
-            try:
-                # Only write to stderr - no file I/O that could deadlock
-                print(f"\n*** SIGBUS in rank {rank} PID {os.getpid()} ***", file=sys.stderr, flush=True)
-                print(f"*** Check /tmp/log/ for other process logs ***", file=sys.stderr, flush=True)
-            except:
-                pass
-            # Exit immediately - don't interfere with PyTorch's process management
-            os._exit(128 + signal.SIGBUS)
-        
-        signal.signal(signal.SIGBUS, handle_sigbus_minimal)
-        print(f"[DEBUG] Minimal SIGBUS handler installed for distributed rank {rank}", flush=True)
+        # Distributed mode: NO signal handlers to avoid PyTorch interference
+        print(f"[DEBUG] Distributed mode detected - SKIPPING signal handlers to preserve PyTorch behavior", flush=True)
+        print(f"[DEBUG] Process will crash normally on SIGBUS - use external monitoring for debugging", flush=True)
         return
     
     # Single GPU mode: Use full handler with logging
-    print(f"[DEBUG] Single GPU mode - using full SIGBUS handler with logging", flush=True)
+    print(f"[DEBUG] Single GPU mode - installing full SIGBUS handler with logging", flush=True)
     
     # Ensure /tmp/log directory exists
     os.makedirs('/tmp/log', exist_ok=True)
@@ -121,7 +108,7 @@ def setup_signal_handlers(rank, world_size=1):
         # Force immediate exit
         os._exit(128 + signal.SIGBUS)
     
-    # Install full handler for single GPU mode
+    # Install full handler for single GPU mode only
     signal.signal(signal.SIGBUS, handle_sigbus_full)
     
     # Check if SIGBUS is blocked and try to unblock it
