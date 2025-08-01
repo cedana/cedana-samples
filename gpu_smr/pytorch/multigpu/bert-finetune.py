@@ -34,16 +34,43 @@ def cleanup():
         dist.destroy_process_group()
 
 
-def setup_signal_handlers(rank):
+def setup_signal_handlers(rank, world_size=1):
     """Set up signal handlers for child processes only"""
     global _log_fd, _log_file_path, _process_id
+    
     print(f"[DEBUG] Setting up signal handlers for rank {rank}, PID {os.getpid()}", flush=True)
+    
+    _process_id = f"rank_{rank}"
+    
+    if world_size > 1:
+        # Distributed mode: Use minimal handler to avoid PyTorch interference
+        print(f"[DEBUG] Distributed mode detected - using minimal SIGBUS handler", flush=True)
+        
+        def handle_sigbus_minimal(signum, frame):
+            """Minimal SIGBUS handler for distributed mode"""
+            try:
+                # Only write to stderr - no file I/O that could deadlock
+                print(f"\n*** SIGBUS in rank {rank} PID {os.getpid()} ***", file=sys.stderr, flush=True)
+                print(f"*** Check /tmp/log/ for other process logs ***", file=sys.stderr, flush=True)
+            except:
+                pass
+            # Exit immediately - don't interfere with PyTorch's process management
+            os._exit(128 + signal.SIGBUS)
+        
+        signal.signal(signal.SIGBUS, handle_sigbus_minimal)
+        print(f"[DEBUG] Minimal SIGBUS handler installed for distributed rank {rank}", flush=True)
+        return
+    
+    # Single GPU mode: Use full handler with logging
+    print(f"[DEBUG] Single GPU mode - using full SIGBUS handler with logging", flush=True)
+    
     # Ensure /tmp/log directory exists
     os.makedirs('/tmp/log', exist_ok=True)
+    
     # Pre-open log file to avoid file operations in signal handler
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    _process_id = f"rank_{rank}"
     _log_file_path = f'/tmp/log/sigbus_{_process_id}_{timestamp}.log'
+    
     try:
         _log_fd = os.open(_log_file_path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o644)
         # Write initial header
@@ -60,13 +87,15 @@ def setup_signal_handlers(rank):
         print(f"[ERROR] Failed to create log file {_log_file_path}: {e}", flush=True)
         _log_fd = None
         return
-    def handle_sigbus(signum, frame):
-        """Handle SIGBUS signal - minimal async-signal-safe operations only"""
+    
+    def handle_sigbus_full(signum, frame):
+        """Full SIGBUS handler for single GPU mode"""
         try:
             if _log_fd is not None:
                 timestamp = datetime.now().strftime('%H:%M:%S')
                 msg = f"\n[{timestamp}] *** SIGBUS RECEIVED *** at PID {os.getpid()}\n"
                 os.write(_log_fd, msg.encode('utf-8'))
+                
                 # Try to get basic stack info
                 try:
                     import traceback
@@ -76,20 +105,24 @@ def setup_signal_handlers(rank):
                         os.write(_log_fd, line.encode('utf-8'))
                 except:
                     os.write(_log_fd, b"Failed to capture traceback\n")
+                
                 # Sync to ensure data is written
                 os.fsync(_log_fd)
+            
             # Also print to stderr
             print(f"\n*** SIGBUS in process {_process_id} - check {_log_file_path} ***", file=sys.stderr, flush=True)
+            
         except:
             try:
                 print(f"SIGBUS in PID {os.getpid()}", file=sys.stderr)
             except:
                 pass
+        
         # Force immediate exit
         os._exit(128 + signal.SIGBUS)
-    # Only set up SIGBUS handler
-    print(f"[DEBUG] Installing SIGBUS handler for rank {rank}", flush=True)
-    signal.signal(signal.SIGBUS, handle_sigbus)
+    
+    # Install full handler for single GPU mode
+    signal.signal(signal.SIGBUS, handle_sigbus_full)
     
     # Check if SIGBUS is blocked and try to unblock it
     current_mask = signal.pthread_sigmask(signal.SIG_BLOCK, set())
@@ -101,7 +134,7 @@ def setup_signal_handlers(rank):
         except Exception as e:
             print(f"[ERROR] Failed to unblock SIGBUS: {e}", flush=True)
     
-    print(f"[DEBUG] SIGBUS handler installed for {_process_id}, logging to {_log_file_path}", flush=True)
+    print(f"[DEBUG] Full SIGBUS handler installed for {_process_id}, logging to {_log_file_path}", flush=True)
     print(f"[DEBUG] Ready to receive manual SIGBUS. Send: kill -SIGBUS {os.getpid()}", flush=True)
     
     # Log that setup is complete
@@ -123,13 +156,13 @@ def train(rank, world_size, model, tokenizer, dataset, epochs=3):
     if world_size > 1:
         print(f"[DEBUG] Setting up distributed training for rank {rank}", flush=True)
         setup(rank, world_size)
-        setup_signal_handlers(rank)
+        setup_signal_handlers(rank, world_size)
         # Prepare the model for DDP
         model = model.to(rank)
         model = DDP(model, device_ids=[rank])
     else:
         print(f"[DEBUG] Single GPU mode, rank {rank}", flush=True)
-        setup_signal_handlers(rank)
+        setup_signal_handlers(rank, world_size)
         model = model.to(rank)
 
     # Tokenize the dataset
