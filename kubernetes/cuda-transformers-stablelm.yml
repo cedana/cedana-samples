@@ -9,7 +9,19 @@ spec:
     - name: transformers-stablelm
       image: cedana/cedana-samples:cuda12.4-torch2.5
       command:
-        ["python3", "-u", "/app/gpu_smr/pytorch/llm/transformers_inference.py"]
+        - python3
+        - -u
+        - /app/gpu_smr/pytorch/llm/transformers_inference.py
+        - --readiness-port=8888
+        - --model=stabilityai/stablelm-2-1_6b
+      ports:
+        - containerPort: 8888
+      readinessProbe:
+        tcpSocket:
+          port: 8888
+        initialDelaySeconds: 1
+        periodSeconds: 1
+        timeoutSeconds: 1
       resources:
         limits:
           nvidia.com/gpu: 1
