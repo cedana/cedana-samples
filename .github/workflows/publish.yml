@@ -4,30 +4,29 @@ on:
   workflow_call:
     inputs:
       github:
-        type: boolean
-        description: "Publish to GitHub releases"
-        required: false
-        default: false
+          type: boolean
+          description: "Publish to GitHub releases"
+          required: false
+          default: false
       dockerhub:
-        type: boolean
-        description: "Publish images to Docker Hub"
-        required: false
-        default: false
+          type: boolean
+          description: "Publish images to Docker Hub"
+          required: false
+          default: false
       image_name:
-        type: string
-        description: "Name of the image to publish"
-        required: false
-        default: cedana/cedana-samples
-     compbio:
-       type: boolean
-       description: "Publish compBio tag"
-       required: false
-       default: false
+          type: string
+          description: "Name of the image to publish"
+          required: false
+          default: cedana/cedana-samples
+      compbio:
+          type: boolean
+          description: "Publish compBio tag"
+          required: false
       post_summary:
-        type: boolean
-        description: "Post summary to Slack"
-        required: false
-        default: false
+          type: boolean
+          description: "Post summary to Slack"
+          required: false
+          default: false
 
 jobs:
   github:
