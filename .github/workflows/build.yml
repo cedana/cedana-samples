@@ -105,9 +105,13 @@ jobs:
   compbio_image:
     name: CompBioImage
     if: ${{ inputs.compbio }}
-    runs-on: runs-on=${{github.run_id}}/runner=4cpu-16g-amd64/extras=s3-cache
+    runs-on: runs-on=${{github.run_id}}/runner=4cpu-16g-${{ matrix.arch }}/extras=s3-cache
     strategy:
       fail-fast: false
+      matrix:
+        arch:
+          - amd64
+          - arm64
     steps:
       - uses: runs-on/action@v1
       - name: Checkout
@@ -140,11 +144,12 @@ jobs:
           context: .
           file: Dockerfile.compbio
           push: true
+          platforms: linux/${{ matrix.arch }}
           labels: compbio-${{ steps.meta.outputs.labels }}
           outputs: |
             type=image,name=${{ inputs.image_name }},push-by-digest=true,name-canonical=true,push=true
-          cache-from: type=s3,blobs_prefix=cache/${{ github.repository }}/,manifests_prefix=cache/${{ github.repository }}/compbio,region=${{ env.RUNS_ON_AWS_REGION }},bucket=${{ env.RUNS_ON_S3_BUCKET_CACHE }}
-          cache-to: type=s3,blobs_prefix=cache/${{ github.repository }}/,manifests_prefix=cache/${{ github.repository }}/compbio,region=${{ env.RUNS_ON_AWS_REGION }},bucket=${{ env.RUNS_ON_S3_BUCKET_CACHE }},mode=max
+          cache-from: type=s3,blobs_prefix=cache/${{ github.repository }}/,manifests_prefix=cache/${{ github.repository }}/compbio-${{ matrix.arch }},region=${{ env.RUNS_ON_AWS_REGION }},bucket=${{ env.RUNS_ON_S3_BUCKET_CACHE }}
+          cache-to: type=s3,blobs_prefix=cache/${{ github.repository }}/,manifests_prefix=cache/${{ github.repository }}/compbio-${{ matrix.arch }},region=${{ env.RUNS_ON_AWS_REGION }},bucket=${{ env.RUNS_ON_S3_BUCKET_CACHE }},mode=max
 
       - name: Export digest
         run: |
@@ -155,7 +160,7 @@ jobs:
       - name: Upload digest
         uses: actions/upload-artifact@v4
         with:
-          name: digests-compbio
+          name: digests-compbio-${{ matrix.arch }}
           path: /tmp/digests/*
           if-no-files-found: error
           retention-days: 1

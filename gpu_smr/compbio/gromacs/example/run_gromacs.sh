@@ -1,13 +1,12 @@
 #!/usr/bin/env sh
 
-cd /home/ubuntu
 rm -rf out
 mkdir out
 
 rm -rf results
 mkdir results
 
-mv input.pdb results
+cp input.pdb results
 cd results
 
 source /usr/local/gromacs/bin/GMXRC
