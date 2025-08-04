@@ -1,7 +1,17 @@
-# Terraform for setting up Demo nodes
+# Terraform for Demo Clusters & Nodes
+
+## Terraform for Demo Clusters
+> Note: This setup assumes this is being run in CI as nightly tests. 
+### Setup 
+Install the terraform CLI (https://developer.hashicorp.com/terraform/tutorials/aws-get-started/install-cli).
+
+
+
+## Terraform for setting up Demo Nodes 
+> FIXME NR: This may be a little deprecated, needs to be updated. 
 Running terraform init and apply inside each of these folders should bootstrap two nodes for you. 
 
-## Setup 
+### Setup 
 Install the terraform CLI (https://developer.hashicorp.com/terraform/tutorials/aws-get-started/install-cli).
 
 You need to have the following environment variables set in `~/.crusoe/config` (you'll need something similar for lambda). 
@@ -29,7 +39,7 @@ To create an SSH key, follow the "generating a new SSH key" section on [Github](
 
 If using Crusoe, I recommend installing the Crusoe [CLI](https://docs.crusoecloud.com/reference/cli/).
 
-### Creating nodes 
+#### Creating nodes 
 
 Inside the folder for a provider (e.g tf/crusoe), run:
 
@@ -41,12 +51,12 @@ terraform init
 terraform apply -var-file=terraform.tfvars
 ```
 
-### Destroying nodes & cleanup 
+#### Destroying nodes & cleanup 
 
 ``` sh
 terraform destroy -var-file=terraform.tfvars
 ```
 
-## Node setup 
+### Node setup 
 SSH into the node and run `./cedana-samples/scripts/bootstrap-instance`. After it completes, you should have a `start.sh` file in your root folder, which you can run to mount an s3 bucket and run cedana. 
 
