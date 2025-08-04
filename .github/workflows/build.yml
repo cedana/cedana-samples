@@ -18,15 +18,15 @@ on:
         description: "Build Docker image"
         required: false
         default: false
+      image_supplementary:
+        type: boolean
+        description: "Build supplementary Docker images"
+        default: false
       image_name:
         type: string
         description: "Name of the Docker image to build"
         required: false
         default: cedana/cedana-samples
-      compbio:
-        type: boolean
-        description: "Build supplementary compBio image"
-        default: false
 
 jobs:
   image:
@@ -94,6 +94,14 @@ jobs:
           digest="${{ steps.build.outputs.digest }}"
           touch "/tmp/digests/${digest#sha256:}"
 
+      - name: Export digest
+        run: |
+          mkdir -p /tmp/digests
+          mkdir -p /tmp/image-name
+          digest="${{ steps.build.outputs.digest }}"
+          touch "/tmp/digests/${digest#sha256:}"
+          echo "${{ inputs.image_name }}" > /tmp/image-name/name.txt
+
       - name: Upload digest
         uses: actions/upload-artifact@v4
         with:
@@ -102,16 +110,29 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
-  compbio_image:
-    name: CompBioImage
-    if: ${{ inputs.compbio }}
+      - name: Upload image name
+        if: ${{ matrix.cuda_version == '12.8' && matrix.torch_version == '2.7' && matrix.arch == 'amd64' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: image-name
+          path: /tmp/image-name/*
+          if-no-files-found: error
+
+  image-supplementary:
+    name: Image
+    if: ${{ inputs.image_supplementary }}
     runs-on: runs-on=${{github.run_id}}/runner=4cpu-16g-${{ matrix.arch }}/extras=s3-cache
     strategy:
       fail-fast: false
       matrix:
+        image:
+          - compbio
         arch:
           - amd64
-         # - arm64
+          - arm64
+        exclude:
+          - image: compbio
+            arch: arm64 # XXX: Not supported yet
     steps:
       - uses: runs-on/action@v1
       - name: Checkout
@@ -142,14 +163,14 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: Dockerfile.compbio
+          file: Dockerfile.${{ matrix.image }}
           push: true
           platforms: linux/${{ matrix.arch }}
-          labels: compbio-${{ steps.meta.outputs.labels }}
+          labels: ${{ steps.meta.outputs.labels }}
           outputs: |
             type=image,name=${{ inputs.image_name }},push-by-digest=true,name-canonical=true,push=true
-          cache-from: type=s3,blobs_prefix=cache/${{ github.repository }}/,manifests_prefix=cache/${{ github.repository }}/compbio-${{ matrix.arch }},region=${{ env.RUNS_ON_AWS_REGION }},bucket=${{ env.RUNS_ON_S3_BUCKET_CACHE }}
-          cache-to: type=s3,blobs_prefix=cache/${{ github.repository }}/,manifests_prefix=cache/${{ github.repository }}/compbio-${{ matrix.arch }},region=${{ env.RUNS_ON_AWS_REGION }},bucket=${{ env.RUNS_ON_S3_BUCKET_CACHE }},mode=max
+          cache-from: type=s3,blobs_prefix=cache/${{ github.repository }}/,manifests_prefix=cache/${{ github.repository }}/${{ matrix.image }}-${{ matrix.arch }},region=${{ env.RUNS_ON_AWS_REGION }},bucket=${{ env.RUNS_ON_S3_BUCKET_CACHE }}
+          cache-to: type=s3,blobs_prefix=cache/${{ github.repository }}/,manifests_prefix=cache/${{ github.repository }}/${{ matrix.image }}-${{ matrix.arch }},region=${{ env.RUNS_ON_AWS_REGION }},bucket=${{ env.RUNS_ON_S3_BUCKET_CACHE }},mode=max
 
       - name: Export digest
         run: |
@@ -160,7 +181,7 @@ jobs:
       - name: Upload digest
         uses: actions/upload-artifact@v4
         with:
-          name: digests-compbio-${{ matrix.arch }}
+          name: digests-${{ matrix.image }}-${{ matrix.arch }}
           path: /tmp/digests/*
           if-no-files-found: error
           retention-days: 1
