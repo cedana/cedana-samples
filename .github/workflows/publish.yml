@@ -164,7 +164,7 @@ jobs:
   post-summary:
     name: Post Summary
     runs-on: ubuntu-latest
-    needs: dockerhub
+    needs: [dockerhub, dockerhub-supplementary, github]
     if: inputs.post_summary
     steps:
       - name: Checkout
