@@ -1,5 +1,10 @@
 name: Publish
 
+permissions:
+  contents: read
+  packages: write
+  pull-requests: write
+
 on:
   workflow_call:
     inputs:
@@ -13,11 +18,6 @@ on:
         description: "Publish images to Docker Hub"
         required: false
         default: false
-      image_name:
-        type: string
-        description: "Name of the image to publish"
-        required: false
-        default: cedana/cedana-samples
       post_summary:
         type: boolean
         description: "Post summary to Slack"
@@ -44,7 +44,7 @@ jobs:
               --generate-notes
 
   dockerhub:
-    name: DockerHub (multi-arch)
+    name: DockerHub
     runs-on: ubuntu-latest
     if: ${{ inputs.dockerhub }}
     strategy:
@@ -58,9 +58,6 @@ jobs:
           - 2.5
           - 2.6
           - 2.7
-    permissions:
-      contents: read
-      packages: write
     steps:
       - name: Download digests
         uses: actions/download-artifact@v4
@@ -68,6 +65,17 @@ jobs:
           path: /tmp/digests
           pattern: digests-${{ matrix.cuda_version }}-${{ matrix.torch_version }}-*
           merge-multiple: true
+
+      - name: Download image name
+        uses: actions/download-artifact@v4
+        with:
+          path: /tmp/image-name
+          name: image-name
+          merge-multiple: true
+
+      - name: Check directories and set variables
+        id: check_dirs
+        run: echo "IMAGE_NAME=$(cat /tmp/image-name/name.txt)" >> $GITHUB_OUTPUT
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -82,31 +90,82 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ inputs.image_name }}
+          images: ${{ steps.check_dirs.outputs.IMAGE_NAME }}
           tags: |
             type=raw,value=cuda${{ matrix.cuda_version }}-torch${{ matrix.torch_version }}
-            type=raw,value=${{ github.head_ref || github.ref_name }}-cuda${{ matrix.cuda_version }}-torch${{ matrix.torch_version }}
-            ${{ (matrix.cuda_version == '12.4' && matrix.torch_version == '2.5') && 'type=raw,value=latest' || '' }}
+            type=raw,value=cuda${{ matrix.cuda_version }}-torch${{ matrix.torch_version }}-${{ github.head_ref || github.ref_name }}
+            ${{ (matrix.cuda_version == '12.8' && matrix.torch_version == '2.7') && 'type=raw,value=cuda' || '' }}
 
       - name: Create manifest list and push
         working-directory: /tmp/digests
         run: |
           docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
-            $(printf '${{ inputs.image_name }}@sha256:%s ' *)
+            $(printf '${{ steps.check_dirs.outputs.IMAGE_NAME }}@sha256:%s ' *)
 
       - name: Inspect image
         run: |
-          # check if push was successful
-          docker buildx imagetools inspect ${{ inputs.image_name }}:${{ steps.meta.outputs.version }}
+          docker buildx imagetools inspect ${{ steps.check_dirs.outputs.IMAGE_NAME }}:${{ steps.meta.outputs.version }}
+
+  dockerhub-supplementary:
+    name: DockerHub
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        image:
+          - compbio
+      fail-fast: false
+    steps:
+      - name: Download digests
+        uses: actions/download-artifact@v4
+        with:
+          path: /tmp/digests
+          pattern: digests-${{ matrix.image }}-*
+          merge-multiple: true
+
+      - name: Download image name
+        uses: actions/download-artifact@v4
+        with:
+          path: /tmp/image-name
+          name: image-name
+          merge-multiple: true
+
+      - name: Check directories and set variables
+        id: check_dirs
+        run: echo "IMAGE_NAME=$(cat /tmp/image-name/name.txt)" >> $GITHUB_OUTPUT
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ vars.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_TOKEN }}
+
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ steps.check_dirs.outputs.IMAGE_NAME }}
+          tags: |
+            type=raw,value=${{ matrix.image }}
+            type=raw,value=${{ matrix.image }}-${{ github.head_ref || github.ref_name }}
+
+      - name: Create manifest list and push
+        working-directory: /tmp/digests
+        run: |
+          docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+            $(printf '${{ steps.check_dirs.outputs.IMAGE_NAME }}@sha256:%s ' *)
+
+      - name: Inspect image
+        run: |
+          docker buildx imagetools inspect ${{ steps.check_dirs.outputs.IMAGE_NAME }}:${{ steps.meta.outputs.version }}
 
   post-summary:
     name: Post Summary
     runs-on: ubuntu-latest
     needs: dockerhub
     if: inputs.post_summary
-    permissions:
-      contents: read
-      pull-requests: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4

@@ -18,6 +18,7 @@ jobs:
     secrets: inherit
     with:
       image: true
+      image_supplementary: true
       image_name: cedana/cedana-samples-test
 
   publish:
@@ -26,6 +27,5 @@ jobs:
     needs: build
     secrets: inherit
     with:
-      image_name: cedana/cedana-samples-test
       dockerhub: true
       post_summary: false
