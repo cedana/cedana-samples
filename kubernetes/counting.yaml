@@ -6,7 +6,7 @@ metadata:
 spec:
   containers:
     - name: counting
-      image: cedana/cedana-samples:cuda
+      image: cedana/cedana-samples:cpu
       args:
         - -c
         - cpu_smr/counting.sh
