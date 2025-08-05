@@ -1,0 +1,53 @@
+FROM ubuntu:22.04 AS builder
+
+ENV DEBIAN_FRONTEND=noninteractive
+LABEL maintainer="Niranjan Ravichandra <nravic@cedana.ai>"
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    unzip \
+    wget \
+    git \
+    python3 \
+    python3-venv \
+    python3-pip \
+    cmake \
+    openmpi-bin \
+    openmpi-doc \
+    libopenmpi-dev \
+    build-essential \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* \
+    && rm -rf /tmp/* /var/tmp/*
+
+WORKDIR /app
+
+COPY cpu_smr/ /app/cpu_smr/
+COPY kubernetes/ /app/kubernetes/
+
+RUN <<EOT
+set -eux
+cd /app/cpu_smr/mpi
+mpicc -O3 mpi_pi_loop.c -o mpi_pi_loop
+
+find /app -name "*.o" -delete
+find /app -name "*.a" -delete
+EOT
+
+FROM ubuntu:22.04 AS runtime
+
+ARG TORCH_VERSION=2.4
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 \
+    python3-pip \
+    openmpi-bin \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* \
+    && rm -rf /tmp/* /var/tmp/*
+
+COPY --from=builder /app /app
+
+WORKDIR /app
+
+ENTRYPOINT ["/bin/bash"]
