@@ -1,5 +1,5 @@
 FROM nvidia/cuda:12.4.0-runtime-ubuntu22.04
-    MAINTAINER Niranjan Ravichandra <nravic@cedana-linux>
+LABEL maintainer="Niranjan Ravichandra <nravic@cedana.ai>"
 
 ENV DEBIAN_FRONTEND=noninteractive
 

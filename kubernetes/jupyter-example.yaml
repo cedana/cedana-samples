@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: Pod
 metadata:
-  name: jupyter-notebook
+  generateName: jupyter-notebook-
   labels:
     app: jupyter
 spec:

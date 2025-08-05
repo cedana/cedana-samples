@@ -9,6 +9,9 @@ tar xfz gromacs-2025.2.tar.gz
 cd gromacs-2025.2
 mkdir build && cd build
 
+CMAKE_BUILD_PARALLEL_LEVEL="$(nproc)"
+export CMAKE_BUILD_PARALLEL_LEVEL
+
 cmake .. \
     -DGMX_BUILD_OWN_FFTW=ON \
     -DREGRESSIONTEST_DOWNLOAD=ON \
