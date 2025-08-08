@@ -36,7 +36,7 @@ rcoulomb    = 1.0
 rvdw        = 1.0
 pbc         = xyz
 EOF
-gmx grompp -f ions.mdp -c solvated.gro -p topol.top -o ions.tpr
+gmx grompp -f ions.mdp -c solvated.gro -p topol.top -o ions.tpr -maxwarn 1
 echo 'SOL' | gmx genion -s ions.tpr -o solv_ions.gro -p topol.top -neutral
 
 # Energy minimization
