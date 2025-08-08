@@ -7,8 +7,15 @@ mkdir results out
 cp input.pdb results/
 cd results
 
-# Load GROMACS env
-source /usr/local/gromacs/bin/GMXRC
+# Pick the first installed force field
+FF=$(ls -d /usr/local/share/gromacs/top/*.ff 2>/dev/null | head -n 1 | xargs -n1 basename | sed 's/\.ff$//')
+
+if [ -z "$FF" ]; then
+    echo "No force fields found in /usr/local/share/gromacs/top/"
+    exit 1
+fi
+
+echo "Using force field: $FF"
 
 # Remove waters/ligands for simplicity
 sed -E '/HETATM|HOH/d' input.pdb >clean.pdb
