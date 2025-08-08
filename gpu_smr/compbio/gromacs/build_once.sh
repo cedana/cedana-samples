@@ -17,6 +17,7 @@ cmake .. \
     -DCMAKE_INSTALL_PREFIX=/usr/local \
     -DGMX_GPU=CUDA \
     -DCUDA_TOOLKIT_ROOT_DIR=/usr/local/cuda \
+    -DCMAKE_CUDA_ARCHITECTURES=native \
     -DGMX_DOUBLE=OFF \
     -DGMX_CUDA_TARGET_SM=80
 
