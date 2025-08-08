@@ -21,7 +21,7 @@ echo "Using force field: $FF"
 sed -E '/HETATM|HOH/d' input.pdb >clean.pdb
 
 # Basic topology/genbox
-gmx pdb2gmx -f clean.pdb -o processed.gro -water tip3p -ff charmm36-mar2019 -ignh
+gmx pdb2gmx -f clean.pdb -o processed.gro -water tip3p -ff "$FF" -ignh
 gmx editconf -f processed.gro -o boxed.gro -c -d 1.0 -bt cubic
 gmx solvate -cp boxed.gro -cs spc216.gro -o solvated.gro -p topol.top
 
