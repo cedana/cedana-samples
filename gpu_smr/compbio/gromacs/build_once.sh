@@ -1,6 +1,5 @@
 #!/usr/bin/env sh
 
-#!/usr/bin/env sh
 set -eux
 
 # Build and install GROMACS system-wide
@@ -15,7 +14,10 @@ export CMAKE_BUILD_PARALLEL_LEVEL
 cmake .. \
     -DGMX_BUILD_OWN_FFTW=ON \
     -DREGRESSIONTEST_DOWNLOAD=ON \
-    -DCMAKE_INSTALL_PREFIX=/usr/local
+    -DCMAKE_INSTALL_PREFIX=/usr/local \
+    -DGMX_GPU=CUDA \
+    -DCUDA_TOOLKIT_ROOT_DIR=/usr/local/cuda \
+    -DGMX_DOUBLE=OFF
 
 make -j"$(nproc)"
 make check
