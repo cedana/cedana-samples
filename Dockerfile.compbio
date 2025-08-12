@@ -1,11 +1,11 @@
-FROM nvidia/cuda:12.4.0-runtime-ubuntu22.04
+FROM nvidia/cuda:12.4.0-devel-ubuntu22.04 AS builder
 LABEL maintainer="Niranjan Ravichandra <nravic@cedana.ai>"
 
+# Set environment variable for non-interactive apt-get operations
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 \
-    nvidia-cuda-toolkit \
     wget \
     git \
     curl \
@@ -17,20 +17,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-ENV CONDA_DIR=/opt/conda
-ENV PATH=$CONDA_DIR/bin:$PATH
-ENV SHELL=/bin/bash
-
-WORKDIR /app
-COPY requirements-compbio.txt /app/requirements.txt
-
-RUN pip install --no-cache-dir --upgrade pip \
-    && pip install --no-cache-dir -r requirements.txt \
-    && rm -rf /root/.cache/pip
-
-COPY cpu_smr/ /app/cpu_smr/
-COPY gpu_smr/ /app/gpu_smr/
-
 RUN <<EOT
     set -eux
     CMAKE_VERSION=3.28.3
@@ -41,25 +27,55 @@ RUN <<EOT
     rm -rf /tmp/cmake-${CMAKE_VERSION}-${ARCH}.tar.gz
 EOT
 
-# Chai-1 model
+WORKDIR /app
+
+COPY requirements-compbio.txt /app/requirements.txt
+RUN pip install --no-cache-dir --upgrade pip \
+    && pip install --no-cache-dir -r requirements.txt \
+    && rm -rf /root/.cache/pip
+
+COPY cpu_smr/ /app/cpu_smr/
+COPY gpu_smr/ /app/gpu_smr/
+
 RUN <<EOT
     set -eux
     cd /app/gpu_smr/compbio/chai-1
     bash ./setup_chai.sh
 EOT
 
-# OpenMM model
 RUN <<EOT
     set -eux
     cd /app/gpu_smr/compbio/openmm
     bash ./setup_openmm.sh
 EOT
 
-# GROMACS build
 RUN <<EOT
     set -eux
     cd /app/gpu_smr/compbio/gromacs
     bash ./build_once.sh
 EOT
 
+FROM nvidia/cuda:12.4.0-base-ubuntu22.04 AS runtime
+LABEL maintainer="Niranjan Ravichandra <nravic@cedana.ai>"
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 \
+    python3-pip \
+    openmpi-bin \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY --from=builder /app /app
+
+COPY --from=builder /usr/local/lib/python3.10/dist-packages /usr/local/lib/python3.10/dist-packages
+
+COPY --from=builder /usr/local/gromacs /usr/local/gromacs
+COPY --from=builder /usr/local/bin/gmx /usr/local/bin/
+
+# Define the entrypoint for the container.
+# This specifies the command that will be executed when the container starts.
 ENTRYPOINT ["/bin/bash", "-c"]
