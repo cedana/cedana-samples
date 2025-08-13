@@ -73,9 +73,11 @@ COPY --from=builder /app /app
 
 COPY --from=builder /usr/local/lib/python3.10/dist-packages /usr/local/lib/python3.10/dist-packages
 
-COPY --from=builder /usr/local/gromacs /usr/local/gromacs
+COPY --from=builder /usr/local/lib /usr/local/lib
 COPY --from=builder /usr/local/bin/gmx /usr/local/bin/
+COPY --from=builder /usr/local/share/gromacs /usr/local/share/gromacs
 
-# Define the entrypoint for the container.
-# This specifies the command that will be executed when the container starts.
+ENV LD_LIBRARY_PATH="/usr/local/lib:${LD_LIBRARY_PATH}"
+ENV PATH="/usr/local/bin:${PATH}"
+
 ENTRYPOINT ["/bin/bash", "-c"]
