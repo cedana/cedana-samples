@@ -39,18 +39,6 @@ COPY gpu_smr/ /app/gpu_smr/
 
 RUN <<EOT
     set -eux
-    cd /app/gpu_smr/compbio/chai-1
-    bash ./setup_chai.sh
-EOT
-
-RUN <<EOT
-    set -eux
-    cd /app/gpu_smr/compbio/openmm
-    bash ./setup_openmm.sh
-EOT
-
-RUN <<EOT
-    set -eux
     cd /app/gpu_smr/compbio/gromacs
     bash ./build_once.sh
 EOT
