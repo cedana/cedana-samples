@@ -1,2 +1,3 @@
 #!/usr/bin/env sh
-cd openmm/examples && python simulatePdb.py
+# Assumes this is being run from anywhere
+python3 examples/python-examples/simulatePdb.py

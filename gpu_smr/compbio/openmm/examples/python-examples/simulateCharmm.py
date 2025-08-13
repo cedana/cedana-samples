@@ -1,0 +1,33 @@
+from openmm.app import *
+from openmm import *
+from openmm.unit import *
+from sys import stdout
+
+# Read the PSF
+psf = CharmmPsfFile('ala_ala_ala.psf')
+
+# Get the coordinates from the PDB
+pdb = PDBFile('ala_ala_ala.pdb')
+
+# Load the parameter set.
+params = CharmmParameterSet('charmm22.rtf', 'charmm22.par')
+
+# NOTICE:
+# -------
+# The CHARMM 22 parameter set is out-of-date and NOT recommended for general
+# use. It is included here as an illustrative example, but for production
+# simulations you should download the latest versions of the force fields at
+# http://mackerell.umaryland.edu/CHARMM_ff_params.html
+
+# Instantiate the system
+system = psf.createSystem(params, nonbondedMethod=NoCutoff, constraints=HBonds)
+integrator = LangevinMiddleIntegrator(300*kelvin, 1/picosecond, 0.004*picoseconds)
+simulation = Simulation(psf.topology, system, integrator)
+simulation.context.setPositions(pdb.getPositions())
+simulation.minimizeEnergy()
+simulation.reporters.append(DCDReporter('output.dcd', 10000))
+simulation.reporters.append(
+        StateDataReporter(stdout, 10009, step=True, potentialEnergy=True,
+                          temperature=True)
+)
+simulation.step(100000)

@@ -55,7 +55,7 @@ RUN <<EOT
     bash ./build_once.sh
 EOT
 
-FROM nvidia/cuda:12.4.0-base-ubuntu22.04 AS runtime
+FROM nvidia/cuda:12.4.0-runtime-ubuntu22.04 AS runtime
 LABEL maintainer="Niranjan Ravichandra <nravic@cedana.ai>"
 
 ENV DEBIAN_FRONTEND=noninteractive
@@ -64,6 +64,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 \
     python3-pip \
     openmpi-bin \
+    libgomp1 \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
