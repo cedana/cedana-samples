@@ -38,7 +38,7 @@
     {
         "filename": "cuda-transformers-mistral-7b.yml",
         "title": "Mistral 7B Inference",
-        "description": "Mistral-7B inference server.",
+        "description": "Mistral-7B inference server with a readiness probe.",
         "type": "gpu"
     },
     {
