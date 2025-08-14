@@ -120,7 +120,7 @@ jobs:
 
   image-supplementary:
     name: Image
-    if: ${{ inputs.image_supplementary }}i
+    if: ${{ inputs.image_supplementary }}
     runs-on: runs-on=${{github.run_id}}/runner=8cpu-32g-${{ matrix.arch }}/extras=s3-cache
     strategy:
       fail-fast: false
