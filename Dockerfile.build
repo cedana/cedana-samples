@@ -1,0 +1,7 @@
+# syntax=docker/dockerfile:1.6
+# Build GROMACS w/ GPU support
+FROM cedana/cedana-gpu:build
+LABEL maintainer="Niranjan Ravichandra <nravic@cedana-linux>"
+
+
+ENTYPOINT ["/bin/bash", "./gpu_smr/compbio/gromacs/build_once.sh"]

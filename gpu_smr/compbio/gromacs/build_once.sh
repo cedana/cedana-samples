@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 
-#!/usr/bin/env sh
 set -eux
+export CUDACXX=/usr/local/cuda/bin/nvcc
 
 # Build and install GROMACS system-wide
 wget https://ftp.gromacs.org/gromacs/gromacs-2025.2.tar.gz
@@ -15,7 +15,11 @@ export CMAKE_BUILD_PARALLEL_LEVEL
 cmake .. \
     -DGMX_BUILD_OWN_FFTW=ON \
     -DREGRESSIONTEST_DOWNLOAD=ON \
-    -DCMAKE_INSTALL_PREFIX=/usr/local
+    -DCMAKE_INSTALL_PREFIX=/usr/local \
+    -DGMX_GPU=CUDA \
+    -DCUDA_TOOLKIT_ROOT_DIR=/usr/local/cuda \
+    -DCMAKE_CUDA_ARCHITECTURES=native \
+    -DGMX_DOUBLE=OFF
 
 make -j"$(nproc)"
 make check
