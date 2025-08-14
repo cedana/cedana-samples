@@ -2,61 +2,73 @@
     {
         "filename": "counting.yaml",
         "title": "Timestamp Logger",
-        "description": "Simple container that logs the current timestamp in a loop, ideal for testing CPU checkpointing."
+        "description": "Logs timestamps in a loop for CPU checkpoint testing.",
+        "type": "cpu"
     },
     {
         "filename": "cuda-vector-add.yaml",
         "title": "CUDA Vector Addition",
-        "description": "Basic CUDA workload that performs vector addition on GPU, demonstrating GPU checkpoint and restore capabilities."
+        "description": "Runs GPU vector addition to test checkpoint and restore.",
+        "type": "gpu"
     },
     {
         "filename": "cuda-mem-throughput.yaml",
         "title": "CUDA Memory Throughput",
-        "description": "CUDA workload that measures memory throughput using SAXPY operations in a loop, useful for GPU memory performance testing."
+        "description": "Measures GPU memory throughput (SAXPY) for performance testing.",
+        "type": "gpu"
     },
     {
         "filename": "cuda-gpu-train-simple.yaml",
         "title": "Simple GPU Training",
-        "description": "Basic GPU training workload using StableLM model for testing GPU checkpoint and restore during training."
+        "description": "Simple GPU training job for checkpoint and restore testing.",
+        "type": "gpu"
     },
     {
         "filename": "cuda-transformers-gpt2.yml",
         "title": "GPT-2 Transformer Inference",
-        "description": "Transformer inference workload using GPT-2 model with readiness probe for testing GPU-accelerated language model checkpointing."
+        "description": "GPT-2 inference server with a readiness probe.",
+        "type": "gpu"
     },
     {
         "filename": "cuda-transformers-gpt2-xl.yml",
         "title": "GPT-2 XL Transformer Inference",
-        "description": "Large transformer inference workload using GPT-2 XL model with readiness probe for testing checkpoint and restore of large language models."
+        "description": "GPT-2 XL inference server with a readiness probe.",
+        "type": "gpu"
     },
     {
         "filename": "cuda-transformers-mistral-7b.yml",
         "title": "Mistral 7B Inference",
-        "description": "Large language model inference using Mistral 7B model, requiring HuggingFace token for testing checkpoint and restore of large models."
+        "description": "Mistral-7B inference server (HuggingFace token required).",
+        "type": "gpu"
     },
     {
         "filename": "cuda-transformers-stablelm.yml",
         "title": "StableLM Inference",
-        "description": "Language model inference using StableLM 2-1.6B model with readiness probe for testing GPU checkpoint and restore capabilities."
+        "description": "StableLM 2-1.6B inference server with a readiness probe.",
+        "type": "gpu"
     },
     {
         "filename": "jupyter-example.yaml",
         "title": "Jupyter Notebook Server",
-        "description": "Jupyter notebook server with token authentication, ideal for interactive development and testing checkpoint capabilities in notebook environments."
+        "description": "Jupyter notebook server with token authentication.",
+        "type": "cpu"
     },
     {
         "filename": "nginx-example.yaml",
         "title": "NGINX Web Server",
-        "description": "Simple NGINX web server deployment for testing basic container checkpoint and restore functionality with web services."
+        "description": "NGINX deployment for basic service testing.",
+        "type": "cpu"
     },
     {
         "filename": "redis-example.yaml",
         "title": "Redis Database",
-        "description": "Redis database deployment with service for testing stateful application checkpoint and restore capabilities."
+        "description": "Redis deployment with a service for stateful testing.",
+        "type": "cpu"
     },
     {
         "filename": "redis-restore-example.yaml",
         "title": "Redis Restore Example",
-        "description": "Redis deployment specifically configured for testing checkpoint and restore scenarios with multiple replicas and service configuration."
+        "description": "Redis deployment configured for restore and replica testing.",
+        "type": "cpu"
     }
 ]
