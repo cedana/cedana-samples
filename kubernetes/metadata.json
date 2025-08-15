@@ -1,62 +1,62 @@
 [
-    {
-        "filename": "counting.yaml",
-        "title": "Timestamp Logger",
-        "description": "Logs timestamps in a loop for CPU checkpoint testing.",
-        "type": "cpu"
-    },
-    {
-        "filename": "cuda-vector-add.yaml",
-        "title": "CUDA Vector Addition",
-        "description": "Runs GPU vector addition to test checkpoint and restore.",
-        "type": "gpu"
-    },
-    {
-        "filename": "cuda-mem-throughput.yaml",
-        "title": "CUDA Memory Throughput",
-        "description": "Measures GPU memory throughput (SAXPY) for performance testing.",
-        "type": "gpu"
-    },
-    {
-        "filename": "cuda-gpu-train-simple.yaml",
-        "title": "Simple GPU Training",
-        "description": "Simple GPU training job for checkpoint and restore testing.",
-        "type": "gpu"
-    },
-    {
-        "filename": "cuda-transformers-gpt2.yml",
-        "title": "GPT-2 Transformer Inference",
-        "description": "GPT-2 inference server with a readiness probe.",
-        "type": "gpu"
-    },
-    {
-        "filename": "cuda-transformers-gpt2-xl.yml",
-        "title": "GPT-2 XL Transformer Inference",
-        "description": "GPT-2 XL inference server with a readiness probe.",
-        "type": "gpu"
-    },
-    {
-        "filename": "cuda-transformers-mistral-7b.yml",
-        "title": "Mistral 7B Inference",
-        "description": "Mistral-7B inference server with a readiness probe.",
-        "type": "gpu"
-    },
-    {
-        "filename": "cuda-transformers-stablelm.yml",
-        "title": "StableLM Inference",
-        "description": "StableLM 2-1.6B inference server with a readiness probe.",
-        "type": "gpu"
-    },
-    {
-        "filename": "jupyter-example.yaml",
-        "title": "Jupyter Notebook Server",
-        "description": "Jupyter notebook server with token authentication.",
-        "type": "cpu"
-    },
-    {
-        "filename": "nginx-example.yaml",
-        "title": "NGINX Web Server",
-        "description": "NGINX deployment for basic service testing.",
-        "type": "cpu"
-    }
+  {
+    "filename": "counting.yaml",
+    "title": "Timestamp Logger",
+    "description": "Logs timestamps in a loop for CPU checkpoint testing.",
+    "type": "cpu"
+  },
+  {
+    "filename": "cuda-vector-add.yaml",
+    "title": "CUDA Vector Addition",
+    "description": "Runs GPU vector addition to test checkpoint and restore.",
+    "type": "gpu"
+  },
+  {
+    "filename": "cuda-mem-throughput.yaml",
+    "title": "CUDA Memory Throughput",
+    "description": "Measures GPU memory throughput (SAXPY) for performance testing.",
+    "type": "gpu"
+  },
+  {
+    "filename": "cuda-gpu-train-simple.yaml",
+    "title": "Simple GPU Training",
+    "description": "Simple GPU training job for checkpoint and restore testing.",
+    "type": "gpu"
+  },
+  {
+    "filename": "cuda-transformers-gpt2.yml",
+    "title": "GPT-2 Transformer Inference",
+    "description": "GPT-2 inference server with a readiness probe.",
+    "type": "gpu"
+  },
+  {
+    "filename": "cuda-transformers-gpt2-xl.yml",
+    "title": "GPT-2 XL Transformer Inference",
+    "description": "GPT-2 XL inference server with a readiness probe.",
+    "type": "gpu"
+  },
+  {
+    "filename": "cuda-transformers-mistral-7b.yml",
+    "title": "Mistral 7B Inference",
+    "description": "Mistral-7B inference server with a readiness probe.",
+    "type": "gpu"
+  },
+  {
+    "filename": "cuda-transformers-stablelm.yml",
+    "title": "StableLM Inference",
+    "description": "StableLM 2-1.6B inference server with a readiness probe.",
+    "type": "gpu"
+  },
+  {
+    "filename": "jupyter-example.yaml",
+    "title": "Jupyter Notebook Server",
+    "description": "Jupyter notebook server with token authentication.",
+    "type": "cpu"
+  },
+  {
+    "filename": "nginx.yaml",
+    "title": "NGINX Web Server",
+    "description": "NGINX deployment for basic service testing.",
+    "type": "cpu"
+  }
 ]
