@@ -58,17 +58,5 @@
         "title": "NGINX Web Server",
         "description": "NGINX deployment for basic service testing.",
         "type": "cpu"
-    },
-    {
-        "filename": "redis-example.yaml",
-        "title": "Redis Database",
-        "description": "Redis deployment with a service for stateful testing.",
-        "type": "cpu"
-    },
-    {
-        "filename": "redis-restore-example.yaml",
-        "title": "Redis Restore Example",
-        "description": "Redis deployment configured for restore and replica testing.",
-        "type": "cpu"
     }
 ]
