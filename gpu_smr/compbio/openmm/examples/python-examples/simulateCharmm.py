@@ -30,4 +30,4 @@ simulation.reporters.append(
         StateDataReporter(stdout, 10009, step=True, potentialEnergy=True,
                           temperature=True)
 )
-simulation.step(100000)
+simulation.step(1000000)

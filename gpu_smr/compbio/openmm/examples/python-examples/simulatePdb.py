@@ -10,6 +10,6 @@ integrator = LangevinMiddleIntegrator(300*kelvin, 1/picosecond, 0.004*picosecond
 simulation = Simulation(pdb.topology, system, integrator)
 simulation.context.setPositions(pdb.positions)
 simulation.minimizeEnergy()
-simulation.reporters.append(DCDReporter('output.dcd', 10000))
-simulation.reporters.append(StateDataReporter(stdout, 10000, step=True, potentialEnergy=True, temperature=True))
+simulation.reporters.append(DCDReporter('output.dcd', 1000))
+simulation.reporters.append(StateDataReporter(stdout, 1000, step=True, potentialEnergy=True, temperature=True))
 simulation.step(100000)
