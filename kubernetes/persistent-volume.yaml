@@ -1,0 +1,67 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: counting-pv
+  namespace: default
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadOnlyMany
+  hostPath:
+    path: "/tmp/counting-pv"
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: counting-pvc
+  namespace: default
+spec:
+  accessModes:
+    - ReadOnlyMany
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  generateName: counting-pvc-
+  namespace: default
+spec:
+  initContainers:
+    - name: init-writer
+      image: cedana/cedana-samples:cpu
+      args:
+        - -c
+        - echo "Initial content from initContainer" > /mnt/pv/test.txt && echo "InitContainer finished writing."
+      volumeMounts:
+        - name: pv-storage
+          mountPath: /mnt/pv
+  containers:
+    - name: counting
+      image: cedana/cedana-samples:cpu
+      args:
+        - -c
+        - |
+          trap 'echo "Exiting..."; exit' SIGINT SIGTERM
+          COUNT=0
+          while true; do
+            echo "Loop iteration: $COUNT"
+            if [ -f /mnt/pv/test.txt ]; then
+              echo "Reading from PVC:"
+              cat /mnt/pv/test.txt
+            else
+              echo "No file found in PVC at /mnt/pv/test.txt"
+            fi
+            COUNT=$((COUNT + 1))
+            sleep 2
+          done
+      volumeMounts:
+        - name: pv-storage
+          mountPath: /mnt/pv
+          readOnly: true
+  volumes:
+    - name: pv-storage
+      persistentVolumeClaim:
+        claimName: counting-pvc
