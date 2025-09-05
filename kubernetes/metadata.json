@@ -6,6 +6,12 @@
     "type": "cpu"
   },
   {
+    "filename": "persistent-volume.yaml",
+    "title": "Persistent Volume Test",
+    "description": "Tests reading from a persistent volume for CPU checkpoint testing.",
+    "type": "cpu"
+  },
+  {
     "filename": "cuda-vector-add.yaml",
     "title": "CUDA Vector Addition",
     "description": "Runs GPU vector addition to test checkpoint and restore.",
