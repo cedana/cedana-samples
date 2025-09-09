@@ -1,0 +1,94 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: cedana-controller
+  namespace: default
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: cedana-controller-role
+rules:
+- apiGroups: [""]
+  resources: ["pods", "services", "configmaps", "secrets", "persistentvolumeclaims"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: [""]
+  resources: ["namespaces"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["apps"]
+  resources: ["deployments", "replicasets", "daemonsets", "statefulsets"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: ["batch"]
+  resources: ["jobs", "cronjobs"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: ["networking.k8s.io"]
+  resources: ["ingresses", "networkpolicies"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: ["apiextensions.k8s.io"]
+  resources: ["customresourcedefinitions"]
+  verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: cedana-controller-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cedana-controller-role
+subjects:
+- kind: ServiceAccount
+  name: cedana-controller
+  namespace: default
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cedana-controller
+  namespace: default
+  labels:
+    app: cedana-controller
+    version: v1.0.0
+spec:
+  replicas: 1 
+  selector:
+    matchLabels:
+      app: cedana-controller
+  template:
+    metadata:
+      labels:
+        app: cedana-controller
+        version: v1.0.0
+    spec:
+      serviceAccountName: cedana-controller
+      containers:
+      - name: cedana-inference-controller
+        image: gornet/cedana-controller:latest
+        imagePullPolicy: Always
+        env:
+        - name: CEDANA_CLUSTER_ID
+          valueFrom:
+            configMapKeyRef:
+              name: cedana-config
+              key: cluster-id
+        - name: CEDANA_AUTH_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: cedana-secrets
+              key: auth-token
+        - name: C_FORCE_ROOT
+          value: "true"
+        - name: REDIS_URL
+          value: "redis://redis-service:6380/0"
+        - name: RABBITMQ_URL
+          value: "amqp://guest:guest@rabbitmq-service:5672/celery_vhost"
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30
+      dnsPolicy: ClusterFirst
