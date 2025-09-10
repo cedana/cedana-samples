@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: Pod
 metadata:
-  name: cuda-mem-throughput
+  generateName: cuda-mem-throughput-
   namespace: default
 spec:
   runtimeClassName: cedana # required for GPU C/R support (use nvidia for native)

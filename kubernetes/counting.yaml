@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: Pod
 metadata:
-  name: counting
+  generateName: counting-
   namespace: default
 spec:
   containers:
