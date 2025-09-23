@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  generateName: counting-multicontainer-
+  namespace: default
+spec:
+  containers:
+    - name: counting-1
+      image: cedana/cedana-samples:cpu
+      args:
+        - -c
+        - cpu_smr/counting.sh
+    - name: counting-2
+      image: cedana/cedana-samples:cpu
+      args:
+        - -c
+        - cpu_smr/counting.sh

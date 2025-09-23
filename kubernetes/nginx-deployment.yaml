@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx-deployment
+  template:
+    metadata:
+      labels:
+        app: nginx-deployment
+    spec:
+      runtimeClassName: cedana # required for auto restore support
+      containers:
+        - name: nginx
+          image: nginx:latest
+          env:
+            - name: CEDANA_CHECKPOINT # required for auto restore support
+              value: nginx-deployment-test
