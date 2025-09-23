@@ -57,7 +57,7 @@ jobs:
         run: |
           gh release upload --clobber "$tag" \
               --repo="$GITHUB_REPOSITORY" \
-              kubernetes/samples.json \
+              kubernetes/* \
 
   dockerhub:
     name: DockerHub
