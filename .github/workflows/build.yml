@@ -41,9 +41,9 @@ jobs:
           - 12.4
           - 12.8
         torch_version:
-          - 2.5
           - 2.6
           - 2.7
+          - 2.8
         arch:
           - amd64
           - arm64
@@ -111,7 +111,7 @@ jobs:
           retention-days: 1
 
       - name: Upload image name
-        if: ${{ matrix.cuda_version == '12.8' && matrix.torch_version == '2.7' && matrix.arch == 'amd64' }}
+        if: ${{ matrix.cuda_version == '12.8' && matrix.torch_version == '2.8' && matrix.arch == 'amd64' }}
         uses: actions/upload-artifact@v4
         with:
           name: image-name
