@@ -2,67 +2,79 @@
   {
     "filename": "counting.yaml",
     "title": "Timestamp Logger",
-    "description": "Logs timestamps in a loop for CPU checkpoint testing.",
+    "description": "Continuously logs timestamps in a pod for manual checkpoint/restore testing.",
     "type": "cpu"
   },
   {
-    "filename": "persistent-volume.yaml",
-    "title": "Persistent Volume Test",
-    "description": "Tests reading from a persistent volume for CPU checkpoint testing.",
+    "filename": "counting-deployment.yaml",
+    "title": "Timestamp Logger (Deployment)",
+    "description": "Continuously logs timestamps in a deployment for automatic restore testing.",
+    "type": "cpu"
+  },
+  {
+    "filename": "counting-persistent-volume.yaml",
+    "title": "Simple Counter (Persistent Volume)",
+    "description": "Tests reading from a persistent volume for persistent volume checkpoint/restore testing.",
+    "type": "cpu"
+  },
+  {
+    "filename": "counting-multicontainer.yaml",
+    "title": "Timestamp Logger (Multi-container)",
+    "description": "Continuously logs timestamps in a multi-container pod for manual checkpoint/restore testing.",
+    "type": "cpu"
+  },
+  {
+    "filename": "nginx.yaml",
+    "title": "NGINX Server (Deployment)",
+    "description": "NGINX deployment for automatic restore testing.",
+    "type": "cpu"
+  },
+  {
+    "filename": "jupyter-notebook.yaml",
+    "title": "Jupyter Notebook Server",
+    "description": "Jupyter notebook server pod with token authentication for manual checkpoint/restore testing.",
     "type": "cpu"
   },
   {
     "filename": "cuda-vector-add.yaml",
     "title": "CUDA Vector Addition",
-    "description": "Runs GPU vector addition to test checkpoint and restore.",
+    "description": "Runs CUDA vector addition to test GPU checkpoint and restore.",
     "type": "gpu"
   },
   {
     "filename": "cuda-mem-throughput.yaml",
     "title": "CUDA Memory Throughput",
-    "description": "Measures GPU memory throughput (SAXPY) for performance testing.",
+    "description": "Measures CUDA memory throughput for GPU performance testing.",
     "type": "gpu"
   },
   {
     "filename": "cuda-gpu-train-simple.yaml",
-    "title": "Simple GPU Training",
-    "description": "Simple GPU training job for checkpoint and restore testing.",
+    "title": "Simple CUDA Training",
+    "description": "Simple CUDA training job for GPU checkpoint and restore testing.",
     "type": "gpu"
   },
   {
     "filename": "cuda-transformers-gpt2.yml",
     "title": "GPT-2 Transformer Inference",
-    "description": "GPT-2 inference server with a readiness probe.",
+    "description": "GPT-2 inference server with a readiness probe for restore vs. cold start benchmarking.",
     "type": "gpu"
   },
   {
     "filename": "cuda-transformers-gpt2-xl.yml",
     "title": "GPT-2 XL Transformer Inference",
-    "description": "GPT-2 XL inference server with a readiness probe.",
+    "description": "GPT-2 XL inference server with a readiness probe for restore vs. cold start benchmarking.",
     "type": "gpu"
   },
   {
     "filename": "cuda-transformers-mistral-7b.yml",
     "title": "Mistral 7B Inference",
-    "description": "Mistral-7B inference server with a readiness probe.",
+    "description": "Mistral-7B inference server with a readiness probe for restore vs. cold start benchmarking.",
     "type": "gpu"
   },
   {
     "filename": "cuda-transformers-stablelm.yml",
     "title": "StableLM Inference",
-    "description": "StableLM 2-1.6B inference server with a readiness probe.",
+    "description": "StableLM 2-1.6B inference server with a readiness probe for restore vs. cold start benchmarking.",
     "type": "gpu"
-  },
-  {
-    "filename": "jupyter-example.yaml",
-    "title": "Jupyter Notebook Server",
-    "description": "Jupyter notebook server with token authentication.",
-    "type": "cpu"
-  },
-  {
-    "filename": "nginx.yaml",
-    "title": "NGINX Web Server",
-    "description": "NGINX deployment for basic service testing.",
-    "type": "cpu"
   }
 ]

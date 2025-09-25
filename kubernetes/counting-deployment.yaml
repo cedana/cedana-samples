@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: counting-deployment
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: counting-deployment
+  template:
+    metadata:
+      labels:
+        app: counting-deployment
+    spec:
+      runtimeClassName: cedana # required for auto restore support
+      containers:
+        - name: counting
+          image: cedana/cedana-samples:cpu
+          args:
+            - -c
+            - cpu_smr/counting.sh
+          env:
+            - name: CEDANA_CHECKPOINT # required for auto restore support
+              value: counting-deployment-test

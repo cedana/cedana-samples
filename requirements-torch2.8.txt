@@ -1,0 +1,20 @@
+# Requirements for Torch are hardcoded, everything else floats
+# based on torch.
+torch~=2.8
+stable-baselines3[extra]
+gymnasium
+transformers
+numpy
+diffusers
+scipy
+tqdm
+wandb
+tiktoken
+datasets
+sentencepiece
+datasets[audio]
+accelerate
+pyannote.metrics
+lightning
+evaluate
+
