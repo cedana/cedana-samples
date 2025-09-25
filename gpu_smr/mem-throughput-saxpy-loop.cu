@@ -21,8 +21,8 @@
 
 #define MILLION 1024 * 1024
 
-int N = 128 * MILLION; // Number of elements
-int NThreads = 512;    // Threads per block
+int N = 64 * MILLION; // Number of elements
+int NThreads = 256;    // Threads per block
 
 __global__ void saxpy(int n, float a, float *x, float *y) {
   int i = blockIdx.x * blockDim.x + threadIdx.x;
