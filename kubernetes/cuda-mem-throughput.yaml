@@ -7,7 +7,7 @@ spec:
   runtimeClassName: cedana # required for GPU C/R support (use nvidia for native)
   containers:
     - name: cuda-mem-throughput
-      image: cedana/cedana-samples:latest
+      image: cedana/cedana-samples:cuda
       args:
         - -c
         - gpu_smr/mem-throughput-saxpy-loop
