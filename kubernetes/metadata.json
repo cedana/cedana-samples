@@ -42,6 +42,12 @@
     "type": "gpu"
   },
   {
+    "filename": "cuda-vector-add-multicontainer.yaml",
+    "title": "CUDA Vector Addition (Multi-container)",
+    "description": "Runs CUDA vector addition in a multi-container pod to test GPU checkpoint and restore.",
+    "type": "gpu"
+  },
+  {
     "filename": "cuda-mem-throughput.yaml",
     "title": "CUDA Memory Throughput",
     "description": "Measures CUDA memory throughput for GPU performance testing.",

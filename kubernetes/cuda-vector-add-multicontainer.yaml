@@ -1,0 +1,24 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  generateName: cuda-vector-add-multicontainer-
+  namespace: default
+spec:
+  runtimeClassName: cedana # required for GPU C/R support (use nvidia for native)
+  containers:
+    - name: cuda-vector-add-1
+      image: cedana/cedana-samples:cuda
+      args:
+        - -c
+        - gpu_smr/vector_add
+      resources:
+        limits:
+          nvidia.com/gpu: 1
+    - name: cuda-vector-add-2
+      image: cedana/cedana-samples:cuda
+      args:
+        - -c
+        - gpu_smr/vector_add
+      resources:
+        limits:
+          nvidia.com/gpu: 1
