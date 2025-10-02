@@ -2,6 +2,7 @@
 # based on torch.
 torch~=2.7
 stable-baselines3[extra]
+vllm
 gymnasium
 transformers
 numpy
