@@ -1,6 +1,7 @@
 # Requirements for Torch are hardcoded, everything else floats
 # based on torch.
 torch~=2.6
+vllm
 stable-baselines3[extra]
 gymnasium
 transformers
