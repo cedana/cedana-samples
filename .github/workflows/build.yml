@@ -32,7 +32,7 @@ jobs:
   image:
     name: Image
     if: ${{ inputs.image }}
-    runs-on: runs-on=${{github.run_id}}/runner=4cpu-16g-${{ matrix.arch }}/tag=${{ matrix.cuda_version }}-${{ matrix.torch_version }}/extras=s3-cache
+    runs-on: runs-on=${{github.run_id}}/runner=4cpu-${{ matrix.arch }}/tag=${{ matrix.cuda_version }}-${{ matrix.torch_version }}/extras=s3-cache
     strategy:
       fail-fast: false
       matrix:
@@ -121,7 +121,7 @@ jobs:
   image-supplementary:
     name: Image
     if: ${{ inputs.image_supplementary }}
-    runs-on: runs-on=${{github.run_id}}/runner=8cpu-32g-${{ matrix.arch }}/extras=s3-cache
+    runs-on: runs-on=${{github.run_id}}/runner=8cpu-${{ matrix.arch }}/extras=s3-cache
     strategy:
       fail-fast: false
       matrix:
