@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Generic VLLM inference runner.
+Generic VLLM inference runner with optional tensor parallelism.
 
 Supported models: https://docs.vllm.ai/en/latest/models/supported_models.html
 """
@@ -28,6 +28,12 @@ def parse_args():
         help="Enable lazy graph execution (compilation). Default is eager mode.",
     )
     parser.add_argument(
+        "--tensor-parallel-size",
+        type=int,
+        default=1,
+        help="Number of GPUs for tensor parallelism (default: 1).",
+    )
+    parser.add_argument(
         "--prompt-file",
         type=str,
         help="Path to file with prompts (one per line). If not given, read from stdin or use a default prompt.",
@@ -52,21 +58,20 @@ def load_prompts(args):
         with open(args.prompt_file, "r", encoding="utf-8") as f:
             return [line.strip() for line in f if line.strip()]
     else:
-        # If stdin is piped in, read prompts from it
         if not sys.stdin.isatty():
             return [line.strip() for line in sys.stdin if line.strip()]
-        # Fallback default
         return ["What is the answer to life, the universe, and everything?"]
 
 
-def inference(model, compile=False, temperature=0.8, top_p=0.95, prompts=None):
+def inference(model, compile=False, tensor_parallel_size=1, temperature=0.8, top_p=0.95, prompts=None):
     sampling_params = SamplingParams(temperature=temperature, top_p=top_p)
 
     try:
         llm = LLM(
             model=model,
             swap_space=0,
-            enforce_eager=not compile,  # compile=True -> lazy execution
+            enforce_eager=not compile,  # compile=True → lazy execution
+            tensor_parallel_size=tensor_parallel_size,
         )
         outputs = llm.generate(prompts, sampling_params)
         for output in outputs:
@@ -83,6 +88,7 @@ def main():
     inference(
         args.model,
         compile=args.compile,
+        tensor_parallel_size=args.tensor_parallel_size,
         temperature=args.temperature,
         top_p=args.top_p,
         prompts=prompts,
@@ -96,4 +102,3 @@ def handle_exit(signum, frame):
 if __name__ == "__main__":
     signal.signal(signal.SIGINT, handle_exit)
     main()
-
