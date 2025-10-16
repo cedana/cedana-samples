@@ -44,6 +44,7 @@ find /app -name "*.o" -delete
 find /app -name "*.a" -delete
 EOT
 
+# Set up llamafactory
 FROM nvidia/cuda:${CUDA_VERSION}.0-runtime-ubuntu22.04 AS runtime
 
 ARG TORCH_VERSION=2.4
@@ -57,7 +58,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /tmp/* /var/tmp/*
 
 COPY --from=builder /app /app
-
 WORKDIR /app
 
 COPY requirements-torch${TORCH_VERSION}.txt /app/requirements.txt
@@ -66,5 +66,12 @@ RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir -r requirements.txt \
     && rm -rf /root/.cache/pip \
     && rm -rf /tmp/* /var/tmp/*
+
+RUN <<EOT
+git clone --depth 1 https://github.com/hiyouga/LLaMA-Factory.git
+cd LLaMA-Factory
+pip install -e ".[torch,metrics]" --no-build-isolation
+cd ..
+EOT
 
 ENTRYPOINT ["/bin/bash"]
