@@ -45,7 +45,6 @@ find /app -name "*.a" -delete
 EOT
 
 FROM nvidia/cuda:${CUDA_VERSION}.0-devel-ubuntu22.04 AS runtime
-
 ARG TORCH_VERSION=2.4
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
