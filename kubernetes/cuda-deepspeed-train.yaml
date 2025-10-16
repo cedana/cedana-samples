@@ -1,12 +1,12 @@
 apiVersion: v1
 kind: Pod
 metadata:
-  generateName: vllm-llama-3-1-8b-
+  generateName: deepspeed-train-example-
   namespace: default
 spec:
   runtimeClassName: cedana # required for GPU C/R support (use nvidia for native)
   containers:
-    - name: vllm-llama-8b
+    - name: deepspeed-train
       image: cedana/cedana-samples-test:cuda12.4-torch2.7
       command:
         - python3
