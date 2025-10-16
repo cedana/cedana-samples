@@ -44,8 +44,7 @@ find /app -name "*.o" -delete
 find /app -name "*.a" -delete
 EOT
 
-# Set up llamafactory
-FROM nvidia/cuda:${CUDA_VERSION}.0-runtime-ubuntu22.04 AS runtime
+FROM nvidia/cuda:${CUDA_VERSION}.0-devel-ubuntu22.04 AS runtime
 
 ARG TORCH_VERSION=2.4
 

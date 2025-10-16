@@ -9,19 +9,9 @@ spec:
     - name: deepspeed-train
       image: cedana/cedana-samples-test:cuda12.4-torch2.7
       command:
-        - python3
-        - -u
-        - gpu_smr/pytorch/llm/vllm_inference_readiness.py
-        - --readiness-port=8888
-        - --model=meta-llama/Llama-3.1-8B
-      ports:
-        - containerPort: 8888
-      readinessProbe:
-        tcpSocket:
-          port: 8888
-        initialDelaySeconds: 1
-        periodSeconds: 1
-        timeoutSeconds: 1
+        - deepspeed
+        - num_gpus=1 # change to 4 for multigpu 
+        - gpu_smr/pytorch/training/deepspeed_train.py
       resources:
         limits:
           nvidia.com/gpu: 1
