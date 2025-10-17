@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  generateName: tensorflow-example-
+  namespace: default
+spec:
+  runtimeClassName: cedana # required for GPU C/R support (use nvidia for native)
+  containers:
+    - name: tensorflow-example
+      image: cedana/cedana-samples-test:cuda12.4-torch2.7
+      command:
+        - python3
+        - -u
+        - gpu_smr/pytorch/training/tensorflow_train.py
