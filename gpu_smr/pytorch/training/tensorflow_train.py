@@ -40,7 +40,7 @@ model.summary()
 print("\nStarting training...")
 start_time = time.time()
 
-model.fit(train_dataset, epochs=15)
+model.fit(train_dataset, epochs=15000)
 
 end_time = time.time()
 print(f"Training finished in {end_time - start_time:.2f} seconds.")
