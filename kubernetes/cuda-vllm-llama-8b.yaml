@@ -14,6 +14,12 @@ spec:
         - gpu_smr/pytorch/llm/vllm_inference_readiness.py
         - --readiness-port=8888
         - --model=meta-llama/Llama-3.1-8B
+      env:
+        - name: LD_LIBRARY_PATH
+          value:
+            /usr/local/lib
+        - name: HF_TOKEN
+          value:
       ports:
         - containerPort: 8888
       readinessProbe:
