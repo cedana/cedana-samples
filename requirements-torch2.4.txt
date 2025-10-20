@@ -19,3 +19,4 @@ pyannote.metrics
 lightning
 evaluate
 deepspeed
+tensorflow

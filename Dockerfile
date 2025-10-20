@@ -44,13 +44,12 @@ find /app -name "*.o" -delete
 find /app -name "*.a" -delete
 EOT
 
-# Set up llamafactory
-FROM nvidia/cuda:${CUDA_VERSION}.0-runtime-ubuntu22.04 AS runtime
-
+FROM nvidia/cuda:${CUDA_VERSION}.0-devel-ubuntu22.04 AS runtime
 ARG TORCH_VERSION=2.4
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 \
+    python3-dev \
     python3-pip \
     openmpi-bin \
     && apt-get clean \
@@ -66,6 +65,20 @@ RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir -r requirements.txt \
     && rm -rf /root/.cache/pip \
     && rm -rf /tmp/* /var/tmp/*
+
+# Force DeepSpeed to build its CUDA extensions at build time
+RUN python3 - <<'PY'
+import deepspeed
+from deepspeed.ops.adam import FusedAdam
+# Trigger JIT build now so fused_adam.so gets compiled and cached
+FusedAdam([{'params': []}])
+PY
+
+# Move the compiled extensions into a known path so they're baked into the image
+RUN mkdir -p /root/.cache/torch_extensions && \
+    cp -r /root/.cache/torch_extensions /usr/local/share/torch_extensions
+ENV TORCH_EXTENSIONS_DIR=/usr/local/share/torch_extensions
+
 
 RUN <<EOT
 git clone --depth 1 https://github.com/hiyouga/LLaMA-Factory.git
