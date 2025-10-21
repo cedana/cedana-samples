@@ -55,8 +55,8 @@
   },
   {
     "filename": "cuda-gpu-train-simple.yaml",
-    "title": "Simple CUDA Training",
-    "description": "Simple CUDA training job for GPU checkpoint and restore testing.",
+    "title": "Simple PyTorch Training",
+    "description": "Simple PyTorch training job for GPU checkpoint and restore testing.",
     "type": "gpu"
   },
   {
@@ -82,5 +82,23 @@
     "title": "StableLM Inference",
     "description": "StableLM 2-1.6B inference server with a readiness probe for restore vs. cold start benchmarking.",
     "type": "gpu"
-  }
+  },
+  {
+    "filename": "cuda-vllm-llama-8b.yaml",
+    "title": "vLLM Llama 3.1 8B Inference",
+    "description": "vLLM Llama 3.1 8B inference server with a readiness probe for restore vs. cold start benchmarking.",
+    "type": "gpu"
+  },
+  {
+    "filename": "cuda-tensorflow.yaml",
+    "title": "Sample Tensorflow Training",
+    "description": "Sample Tensorflow training job for GPU checkpoint and restore testing.",
+    "type": "gpu"
+  },
+  {
+    "filename": "cuda-deepspeed-train.yaml",
+    "title": "Sample DeepSpeed Training",
+    "description": "Sample DeepSpeed training job for GPU checkpoint and restore testing.",
+    "type": "gpu"
+  },
 ]
