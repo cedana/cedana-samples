@@ -92,13 +92,19 @@
   {
     "filename": "cuda-tensorflow.yaml",
     "title": "Sample Tensorflow Training",
-    "description": "Sample Tensorflow training job for GPU checkpoint and restore testing.",
+    "description": "Trains a simple model using Tensorflow MirroredStrategy on single or multiple GPUs.",
     "type": "gpu"
   },
   {
     "filename": "cuda-deepspeed-train.yaml",
     "title": "Sample DeepSpeed Training",
-    "description": "Sample DeepSpeed training job for GPU checkpoint and restore testing.",
+    "description": "Trains a simple DeepSpeed model with FP16 and ZeRO optimization on GPUs",
     "type": "gpu"
   },
+  {
+    "filename": "yuning.yaml",
+    "title": "Caltech Virtual Tissue Model",
+    "description": "Virtual Tissue Model deployment. Requires GPU for simulation.",
+    "type": "gpu"
+  }
 ]
