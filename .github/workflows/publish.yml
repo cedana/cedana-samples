@@ -32,6 +32,13 @@ jobs:
     steps:
       - uses: runs-on/action@v1
 
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
+          fetch-tags: true
+
       - name: Create release
         id: create-release
         env:
@@ -42,6 +49,15 @@ jobs:
               --repo="$GITHUB_REPOSITORY" \
               --title="$tag" \
               --generate-notes
+
+      - name: Upload assets
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          tag: ${{ github.head_ref || github.ref_name }}
+        run: |
+          gh release upload --clobber "$tag" \
+              --repo="$GITHUB_REPOSITORY" \
+              kubernetes/* \
 
   dockerhub:
     name: DockerHub
@@ -55,9 +71,9 @@ jobs:
           - 12.4
           - 12.8
         torch_version:
-          - 2.5
           - 2.6
           - 2.7
+          - 2.8
     steps:
       - name: Download digests
         uses: actions/download-artifact@v4

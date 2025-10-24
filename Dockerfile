@@ -44,20 +44,20 @@ find /app -name "*.o" -delete
 find /app -name "*.a" -delete
 EOT
 
-FROM nvidia/cuda:${CUDA_VERSION}.0-runtime-ubuntu22.04 AS runtime
-
+FROM nvidia/cuda:${CUDA_VERSION}.0-devel-ubuntu22.04 AS runtime
 ARG TORCH_VERSION=2.4
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 \
+    python3-dev \
     python3-pip \
     openmpi-bin \
+    git \ 
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* \
     && rm -rf /tmp/* /var/tmp/*
 
 COPY --from=builder /app /app
-
 WORKDIR /app
 
 COPY requirements-torch${TORCH_VERSION}.txt /app/requirements.txt
@@ -66,5 +66,13 @@ RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir -r requirements.txt \
     && rm -rf /root/.cache/pip \
     && rm -rf /tmp/* /var/tmp/*
+
+
+RUN <<EOT
+git clone --depth 1 https://github.com/hiyouga/LLaMA-Factory.git
+cd LLaMA-Factory
+pip install -e ".[torch,metrics]" --no-build-isolation
+cd ..
+EOT
 
 ENTRYPOINT ["/bin/bash"]
