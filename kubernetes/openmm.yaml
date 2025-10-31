@@ -4,14 +4,30 @@ metadata:
   generateName: openmm-simulatepdb-
   namespace: default
 spec:
-  runtimeClassName: cedana # required for GPU C/R support (use nvidia for native)
+  runtimeClassName: cedana
   containers:
     - name: openmm-simulatepdb
       image: cedana/cedana-samples:compbio
       command:
         - bash
         - -c
-        - /app/gpu_smr/compbio/openmm/openmm_example.sh
+        - cd gpu_smr/compbio/openmm/examples/python-examples && python3 simulatePdb.py
+      env:
+        - name: OPENMM_DEFAULT_PLATFORM
+          value: CUDA
+        - name: OPENMM_CUDA_TEMP_DIR
+          value: /tmp/test_ptx
+        - name: CEDANA_PERSISTENT_MOUNTS
+          value: /tmp/out
       resources:
         limits:
           nvidia.com/gpu: 1
+
+      volumeMounts:
+      - name: host-tmp
+        mountPath: /tmp/test_ptx
+  volumes:
+    - name: host-tmp
+      hostPath:
+        path: /tmp/test_ptx
+        type: Directory
