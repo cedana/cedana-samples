@@ -3,108 +3,147 @@
     "filename": "counting.yaml",
     "title": "Timestamp Logger",
     "description": "Continuously logs timestamps in a pod for manual checkpoint/restore testing.",
-    "type": "cpu"
+    "type": "cpu",
+    "labels": ["timer"]
   },
   {
     "filename": "counting-deployment.yaml",
     "title": "Timestamp Logger (Deployment)",
     "description": "Continuously logs timestamps in a deployment for automatic restore testing.",
-    "type": "cpu"
+    "type": "cpu",
+    "labels": ["logging", "timer", "deployment"]
   },
   {
     "filename": "counting-persistent-volume.yaml",
     "title": "Simple Counter (Persistent Volume)",
     "description": "Tests reading from a persistent volume for persistent volume checkpoint/restore testing.",
-    "type": "cpu"
+    "type": "cpu",
+    "labels": ["counter", "storage", "persistent-volume"]
   },
   {
     "filename": "counting-multicontainer.yaml",
     "title": "Timestamp Logger (Multi-container)",
     "description": "Continuously logs timestamps in a multi-container pod for manual checkpoint/restore testing.",
-    "type": "cpu"
+    "type": "cpu",
+    "labels": ["logging", "timer", "multicontainer"]
   },
   {
     "filename": "nginx.yaml",
     "title": "NGINX Server (Deployment)",
     "description": "NGINX deployment for automatic restore testing.",
-    "type": "cpu"
+    "type": "cpu",
+    "labels": ["web", "server", "nginx"]
   },
   {
     "filename": "jupyter-notebook.yaml",
     "title": "Jupyter Notebook Server",
     "description": "Jupyter notebook server pod with token authentication for manual checkpoint/restore testing.",
-    "type": "cpu"
+    "type": "cpu",
+    "labels": ["interactive", "jupyter", "data-science"]
   },
   {
     "filename": "cuda-vector-add.yaml",
     "title": "CUDA Vector Addition",
     "description": "Runs CUDA vector addition to test GPU checkpoint and restore.",
-    "type": "gpu"
+    "type": "gpu",
+    "labels": ["cuda", "math", "compute"]
   },
   {
     "filename": "cuda-vector-add-multicontainer.yaml",
     "title": "CUDA Vector Addition (Multi-container)",
     "description": "Runs CUDA vector addition in a multi-container pod to test GPU checkpoint and restore.",
-    "type": "gpu"
+    "type": "gpu",
+    "labels": ["cuda", "math", "multicontainer"]
   },
   {
     "filename": "cuda-mem-throughput.yaml",
     "title": "CUDA Memory Throughput",
     "description": "Measures CUDA memory throughput for GPU performance testing.",
-    "type": "gpu"
+    "type": "gpu",
+    "labels": ["cuda", "benchmark", "memory"]
   },
   {
     "filename": "cuda-gpu-train-simple.yaml",
     "title": "Simple PyTorch Training",
     "description": "Simple PyTorch training job for GPU checkpoint and restore testing.",
-    "type": "gpu"
+    "type": "gpu",
+    "labels": ["pytorch", "training", "ml"]
   },
   {
     "filename": "cuda-transformers-gpt2.yml",
     "title": "GPT-2 Transformer Inference",
     "description": "GPT-2 inference server with a readiness probe for restore vs. cold start benchmarking.",
-    "type": "gpu"
+    "type": "gpu",
+    "labels": ["transformers", "llm", "inference"]
   },
   {
     "filename": "cuda-transformers-gpt2-xl.yml",
     "title": "GPT-2 XL Transformer Inference",
     "description": "GPT-2 XL inference server with a readiness probe for restore vs. cold start benchmarking.",
-    "type": "gpu"
+    "type": "gpu",
+    "labels": ["transformers", "llm", "inference", "large-model"]
   },
   {
     "filename": "cuda-transformers-mistral-7b.yml",
     "title": "Mistral 7B Inference",
     "description": "Mistral-7B inference server with a readiness probe for restore vs. cold start benchmarking.",
-    "type": "gpu"
+    "type": "gpu",
+    "labels": ["transformers", "nlp", "inference", "mistral"]
   },
   {
     "filename": "cuda-transformers-stablelm.yml",
     "title": "StableLM Inference",
     "description": "StableLM 2-1.6B inference server with a readiness probe for restore vs. cold start benchmarking.",
-    "type": "gpu"
+    "type": "gpu",
+      "labels": ["transformers", "llm", "inference", "stablelm"]
   },
   {
     "filename": "cuda-vllm-llama-8b.yaml",
     "title": "vLLM Llama 3.1 8B Inference",
     "description": "vLLM Llama 3.1 8B inference server with a readiness probe for restore vs. cold start benchmarking.",
-    "type": "gpu"
+    "type": "gpu",
+    "labels": ["vllm", "llm", "inference", "transformers"]
   },
   {
     "filename": "cuda-tensorflow.yaml",
     "title": "Sample Tensorflow Training",
     "description": "Trains a simple model using Tensorflow MirroredStrategy on single or multiple GPUs.",
-    "type": "gpu"
+    "type": "gpu",
+    "labels": ["tensorflow", "training", "ml"]
   },
   {
     "filename": "cuda-deepspeed-train.yaml",
     "title": "Sample DeepSpeed Training",
     "description": "Trains a simple DeepSpeed model with FP16 and ZeRO optimization on GPUs",
-    "type": "gpu"
+    "type": "gpu",
+    "labels": ["deepspeed", "training", "ml", "optimization"]
   },
   {
     "filename": "yuning.yaml",
     "title": "Caltech Virtual Tissue Model",
     "description": "Virtual Tissue Model deployment. Requires GPU for simulation.",
-    "type": "gpu"
+    "type": "gpu",
+    "labels": ["simulation", "biophysics", "compbio"]
+  },
+  {
+    "filename": "gromacs-simple-example.yaml",
+    "title": "GROMACS Molecular Dynamics Simulation (2ns)",
+    "description": "Runs a simple GROMACS molecular dynamics simulation on a GPU.",
+    "type": "gpu",
+    "labels": ["molecular-dynamics", "gromacs", "compbio"]
+  },
+  {
+    "filename": "gromacs-complex-example.yaml",
+    "title": "GROMACS Molecular Dynamics Simulation (1000ns)",
+    "description": "Runs a complex EM → NVT → NPT → production → RMSD/RMSF GROMACS simulation on a GPU.",
+    "type": "gpu",
+    "labels": ["molecular-dynamics", "gromacs", "compbio"]
+  },
+  {
+    "filename": "openmm.yaml",
+    "title": "OpenMM SimulatePdb",
+    "description": "Runs an OpenMM molecular dynamics simulation (simulatePdb) on a GPU.",
+    "type": "gpu",
+    "labels": ["molecular-dynamics", "openmm", "compbio"]
   }
 ]
