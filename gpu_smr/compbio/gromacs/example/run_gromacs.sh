@@ -1,9 +1,10 @@
-#!/usr/bin/env sh
+#!/usr/bin/env bash
 set -euo pipefail
 
 # clean dirs
-rm -rf out results
-mkdir results out
+rm -rf out
+mkdir -p results out
+rm -rf results/*
 cp input.pdb results/
 cd results
 

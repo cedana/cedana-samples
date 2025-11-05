@@ -1,0 +1,179 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  generateName: gromacs-example-
+  namespace: default
+spec:
+  runtimeClassName: cedana
+  containers:
+    - name: gromacs-test
+      image: cedana/cedana-samples:compbio
+      workingDir: /app/gpu_smr/compbio/gromacs/example
+      command:
+        - bash
+        - -c
+        - |
+          set -euo pipefail
+          mkdir -p results out /app/gpu_smr/compbio/gromacs/example/results
+          cp input.pdb results/
+          cd results
+
+          # --- 1. System Setup (Same as before) ---
+          echo "### 1. Setting up system..."
+          FF=$(ls -d /usr/local/share/gromacs/top/*.ff 2>/dev/null | head -n1 | xargs -n1 basename | sed 's/\.ff$//')
+          [ -z "$FF" ] && echo "No force fields found" && exit 1
+          echo "Using force field: $FF"
+          sed -E '/HETATM|HOH/d' input.pdb > clean.pdb
+
+          gmx pdb2gmx -f clean.pdb -o processed.gro -water tip3p -ff "$FF" -ignh
+          gmx editconf -f processed.gro -o boxed.gro -c -d 2.5 -bt cubic
+          gmx solvate -cp boxed.gro -cs spc216.gro -o solvated.gro -p topol.top
+
+          cat <<- 'EOF' > ions.mdp
+          integrator=steep
+          emtol=1000.0
+          nsteps=500
+          cutoff-scheme=Verlet
+          coulombtype=PME
+          rcoulomb=1.0
+          rvdw=1.0
+          pbc=xyz
+          EOF
+
+          gmx grompp -f ions.mdp -c solvated.gro -p topol.top -o ions.tpr -maxwarn 1
+          echo "SOL" | gmx genion -s ions.tpr -o solv_ions.gro -p topol.top -neutral -conc 0.15
+
+          # --- 2. Energy Minimization (Same as before) ---
+          echo "### 2. Running Energy Minimization..."
+          cat <<- 'EOF' > em.mdp
+          integrator=steep
+          emtol=1000
+          nsteps=5000
+          cutoff-scheme=Verlet
+          coulombtype=PME
+          rcoulomb=1.0
+          rvdw=1.0
+          pbc=xyz
+          EOF
+
+          gmx grompp -f em.mdp -c solv_ions.gro -p topol.top -o em.tpr
+          gmx mdrun -nb gpu -v -deffnm em -cpi em.cpt
+
+          # --- 3. NEW: NVT Equilibration (Heating) ---
+          echo "### 3. Running NVT Equilibration..."
+          cat <<- 'EOF' > nvt.mdp
+          integrator=md
+          nsteps=50000                 ; 100 ps
+          dt=0.002
+          nstxout-compressed=5000
+          nstenergy=5000
+          nstlog=5000
+          continuation=no
+          constraint_algorithm=lincs
+          constraints=h-bonds
+          lincs_iter=1
+          lincs_order=4
+          cutoff-scheme=Verlet
+          rlist=1.2
+          vdwtype=cutoff
+          rvdw=1.2
+          coulombtype=PME
+          rcoulomb=1.2
+          pme_order=4
+          fourierspacing=0.16
+          tcoupl=V-rescale             ; Temperature coupling
+          tc-grps=System
+          tau_t=0.1
+          ref_t=300
+          pcoupl=no                    ; No pressure coupling
+          gen_vel=yes                  ; Generate velocities for starting
+          gen_temp=300
+          pbc=xyz
+          EOF
+          
+          gmx grompp -f nvt.mdp -c em.gro -p topol.top -o nvt.tpr
+          gmx mdrun -nb gpu -v -deffnm nvt -cpi nvt.cpt
+
+          # --- 4. NEW: NPT Equilibration (Density/Pressure) ---
+          echo "### 4. Running NPT Equilibration..."
+          cat <<- 'EOF' > npt.mdp
+          integrator=md
+          nsteps=50000                 ; 100 ps
+          dt=0.002
+          nstxout-compressed=5000
+          nstenergy=5000
+          nstlog=5000
+          continuation=yes             ; Continue from NVT
+          constraint_algorithm=lincs
+          constraints=h-bonds
+          lincs_iter=1
+          lincs_order=4
+          cutoff-scheme=Verlet
+          rlist=1.2
+          vdwtype=cutoff
+          rvdw=1.2
+          coulombtype=PME
+          rcoulomb=1.2
+          pme_order=4
+          fourierspacing=0.16
+          tcoupl=V-rescale
+          tc-grps=System
+          tau_t=0.1
+          ref_t=300
+          pcoupl=Parrinello-Rahman     ; Pressure coupling
+          pcoupltype=isotropic
+          tau_p=2.0
+          ref_p=1.0
+          compressibility=4.5e-5
+          gen_vel=no                   ; Don't re-generate velocities
+          pbc=xyz
+          EOF
+
+          gmx grompp -f npt.mdp -c nvt.gro -p topol.top -o npt.tpr
+          gmx mdrun -nb gpu -v -deffnm npt -cpi npt.cpt
+
+          # --- 5. UPDATED: Production MD (Longer run) ---
+          echo "### 5. Running Production MD (50M steps)..."
+          cat <<- 'EOF' > md.mdp
+          integrator=md
+          nsteps=50000000              ; 100 ns (This is 50x longer)
+          dt=0.002
+          nstxout-compressed=10000
+          nstenergy=10000
+          nstlog=10000
+          continuation=yes
+          constraint_algorithm=lincs
+          constraints=h-bonds
+          lincs_iter=1
+          lincs_order=4
+          cutoff-scheme=Verlet
+          rlist=1.2
+          vdwtype=cutoff
+          rvdw=1.2
+          coulombtype=PME
+          rcoulomb=1.2
+          pme_order=4
+          fourierspacing=0.16
+          tcoupl=V-rescale
+          tc-grps=System
+          tau_t=0.1
+          ref_t=300
+          pcoupl=Parrinello-Rahman
+          pcoupltype=isotropic
+          tau_p=2.0
+          ref_p=1.0
+          compressibility=4.5e-5
+          gen_temp=300
+          pbc=xyz
+          EOF
+
+          gmx grompp -f md.mdp -c npt.gro -p topol.top -o md.tpr
+          gmx mdrun -nb gpu -v -deffnm md -cpi md.cpt -update gpu -pme gpu
+
+          cp -r * ../../out/
+      env:
+        - name: CEDANA_PERSISTENT_MOUNT
+          value: /app/gpu_smr/compbio/gromacs/example/results
+      resources:
+        limits:
+          nvidia.com/gpu: 1
