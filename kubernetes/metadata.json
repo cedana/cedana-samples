@@ -150,6 +150,7 @@
     "filename": "cuda-bindcraft.yaml",
     "title": "BindCraft Example",
     "description": "An open-source and automated pipeline for de novo protein binder design",
-    "type": "gpu"
+    "type": "gpu",
+    "labels": ["bindcraft", "protein-design", "compbio"]
   }
 ]
