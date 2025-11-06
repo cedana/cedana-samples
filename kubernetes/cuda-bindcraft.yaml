@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  generateName: bindcraft-no-rosetta-pod-6
+  namespace: default
+spec:
+  restartPolicy: Never
+  runtimeClassName: cedana
+  containers:
+    - name: runner
+      image: hammadtamarindbio/bindcraft-example:1.0.0
+      imagePullPolicy: Always
+      command: ["./run-bindcraft.sh"]
+      env:
+        - name: LD_LIBRARY_PATH
+          value: /opt/conda/envs/BindCraft/lib/python3.9/site-packages/nvidia/cuda_runtime/lib:/opt/conda/envs/BindCraft/lib/python3.9/site-packages/nvidia/cudnn/lib:/opt/conda/envs/BindCraft/lib/python3.9/site-packages/nvidia/cusolver/lib
+        - name: CEDANA_PERSISTENT_MOUNTS
+          value: /home/ubuntu/out
+        - name: NVIDIA_VISIBLE_DEVICES
+          value: ALL
+      # resources:
+      #   limits:
+      #     nvidia.com/gpu: "1"
+      #   requests:
+      #     nvidia.com/gpu: "1"
