@@ -63,11 +63,18 @@
     "labels": ["cuda", "benchmark", "memory"]
   },
   {
-    "filename": "cuda-gpu-train-simple.yaml",
+    "filename": "cuda-pytorch-train.yaml",
     "title": "Simple PyTorch Training",
     "description": "Simple PyTorch training job for GPU checkpoint and restore testing.",
     "type": "gpu",
     "labels": ["pytorch", "training", "ml"]
+  },
+  {
+    "filename": "cuda-multigpu-pytorch-train.yaml",
+    "title": "Simple PyTorch Training (Multi-GPU)",
+    "description": "Simple PyTorch multi-GPU training job for GPU checkpoint and restore testing.",
+    "type": "gpu",
+    "labels": ["pytorch", "training", "ml", "multigpu"]
   },
   {
     "filename": "cuda-transformers-gpt2.yml",
