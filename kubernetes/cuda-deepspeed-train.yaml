@@ -14,4 +14,4 @@ spec:
         - gpu_smr/pytorch/training/deepspeed_train.py
       resources:
         limits:
-          nvidia.com/gpu: 1
+          nvidia.com/gpu: 2
