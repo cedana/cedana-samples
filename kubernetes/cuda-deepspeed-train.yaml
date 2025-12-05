@@ -7,7 +7,7 @@ spec:
   runtimeClassName: cedana # required for GPU C/R support (use nvidia for native)
   containers:
     - name: deepspeed-train
-      image: cedana/cedana-samples-test:cuda12.4-torch2.7
+      image: cedana/cedana-samples:cuda12.4-torch2.7
       command:
         - deepspeed
         - --num_gpus=1
