@@ -63,11 +63,18 @@
     "labels": ["cuda", "benchmark", "memory"]
   },
   {
-    "filename": "cuda-gpu-train-simple.yaml",
+    "filename": "cuda-pytorch-train.yaml",
     "title": "Simple PyTorch Training",
     "description": "Simple PyTorch training job for GPU checkpoint and restore testing.",
     "type": "gpu",
     "labels": ["pytorch", "training", "ml"]
+  },
+  {
+    "filename": "cuda-multigpu-pytorch-train.yaml",
+    "title": "Simple PyTorch Training (Multi-GPU)",
+    "description": "Simple PyTorch multi-GPU training job for GPU checkpoint and restore testing.",
+    "type": "gpu",
+    "labels": ["pytorch", "training", "ml", "multigpu"]
   },
   {
     "filename": "cuda-transformers-gpt2.yml",
@@ -95,7 +102,7 @@
     "title": "StableLM Inference",
     "description": "StableLM 2-1.6B inference server with a readiness probe for restore vs. cold start benchmarking.",
     "type": "gpu",
-      "labels": ["transformers", "llm", "inference", "stablelm"]
+    "labels": ["transformers", "llm", "inference", "stablelm"]
   },
   {
     "filename": "cuda-vllm-llama-8b.yaml",
@@ -145,5 +152,12 @@
     "description": "Runs an OpenMM molecular dynamics simulation (simulatePdb) on a GPU.",
     "type": "gpu",
     "labels": ["molecular-dynamics", "openmm", "compbio"]
+  },
+  {
+    "filename": "cuda-bindcraft.yaml",
+    "title": "BindCraft Example",
+    "description": "An open-source and automated pipeline for de novo protein binder design",
+    "type": "gpu",
+    "labels": ["bindcraft", "protein-design", "compbio"]
   }
 ]
