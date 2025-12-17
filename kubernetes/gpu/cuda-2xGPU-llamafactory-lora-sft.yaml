@@ -16,6 +16,7 @@ spec:
           export PIP_CONSTRAINT=""
           pip install -e ".[torch,metrics]"
           # sleep 1d;
+          export FORCE_TORCHRUN=1
           llamafactory-cli train examples/train_lora/llama3_lora_sft.yaml learning_rate=1e-5 logging_steps=1
       env:
         - name: DEPLOY_VALUE
@@ -36,9 +37,9 @@ spec:
       name: dgtest-megatronlm
       resources:
         limits:
-          nvidia.com/gpu: 1
+          nvidia.com/gpu: 2
         requests:
-          nvidia.com/gpu: 1
+          nvidia.com/gpu: 2
       volumeMounts:
         - mountPath: /data
           name: data
