@@ -63,29 +63,14 @@
     "labels": ["cuda", "benchmark", "memory"]
   },
   {
-<<<<<<< HEAD
-    "filename": "cuda-pytorch-train.yaml",
-=======
     "filename": "gpu/cuda-gpu-train-simple.yaml",
->>>>>>> b30a705 (fix: yamls)
     "title": "Simple PyTorch Training",
     "description": "Simple PyTorch training job for GPU checkpoint and restore testing.",
     "type": "gpu",
     "labels": ["pytorch", "training", "ml"]
   },
   {
-<<<<<<< HEAD
-    "filename": "cuda-multigpu-pytorch-train.yaml",
-    "title": "Simple PyTorch Training (Multi-GPU)",
-    "description": "Simple PyTorch multi-GPU training job for GPU checkpoint and restore testing.",
-    "type": "gpu",
-    "labels": ["pytorch", "training", "ml", "multigpu"]
-  },
-  {
-    "filename": "cuda-transformers-gpt2.yml",
-=======
     "filename": "gpu/cuda-transformers-gpt2.yml",
->>>>>>> b30a705 (fix: yamls)
     "title": "GPT-2 Transformer Inference",
     "description": "GPT-2 inference server with a readiness probe for restore vs. cold start benchmarking.",
     "type": "gpu",
@@ -114,10 +99,17 @@
   },
   {
     "filename": "gpu/cuda-vllm-llama-8b.yaml",
-    "title": "vLLM Llama 3.1 8B Inference",
+    "title": "vLLM Llama 3.1 8B Inference (Simple)",
     "description": "vLLM Llama 3.1 8B inference server with a readiness probe for restore vs. cold start benchmarking.",
     "type": "gpu",
     "labels": ["vllm", "llm", "inference", "transformers"]
+  },
+  {
+    "filename": "gpu/cuda-vllm-llama-3.1-8b.yaml",
+    "title": "vLLM Llama 3.1 8B Inference",
+    "description": "vLLM Llama 3.1 8B inference server with persistent volume and readiness probe.",
+    "type": "gpu",
+    "labels": ["vllm", "llm", "inference", "llama"]
   },
   {
     "filename": "gpu/cuda-tensorflow.yaml",
@@ -139,6 +131,41 @@
     "description": "Trains a DeepSpeed model with FP16 and ZeRO optimization on 2 GPUs.",
     "type": "gpu",
     "labels": ["deepspeed", "training", "ml", "optimization", "multigpu"]
+  },
+  {
+    "filename": "gpu/cuda-pytorch-cifar100.yaml",
+    "title": "PyTorch CIFAR-100 Training",
+    "description": "Trains a ResNet model on CIFAR-100 dataset using PyTorch on a GPU.",
+    "type": "gpu",
+    "labels": ["pytorch", "training", "ml", "cifar"]
+  },
+  {
+    "filename": "gpu/cuda-4xGPU-pytorch-cifar100.yaml",
+    "title": "PyTorch CIFAR-100 4-GPU Training",
+    "description": "Trains a ResNet model on CIFAR-100 dataset using PyTorch on 4 GPUs.",
+    "type": "gpu",
+    "labels": ["pytorch", "training", "ml", "cifar", "multigpu"]
+  },
+  {
+    "filename": "gpu/cuda-llamafactory-lora-sft.yaml",
+    "title": "LlamaFactory LoRA SFT Training",
+    "description": "LoRA supervised fine-tuning of Llama 3 using LlamaFactory on a GPU.",
+    "type": "gpu",
+    "labels": ["llm", "training", "ml", "llamafactory", "lora", "sft"]
+  },
+  {
+    "filename": "gpu/cuda-2xGPU-llamafactory-lora-sft.yaml",
+    "title": "LlamaFactory LoRA SFT 2-GPU Training",
+    "description": "LoRA supervised fine-tuning of Llama 3 using LlamaFactory on 2 GPUs.",
+    "type": "gpu",
+    "labels": ["llm", "training", "ml", "llamafactory", "lora", "sft", "multigpu"]
+  },
+  {
+    "filename": "gpu/cuda-bindcraft.yaml",
+    "title": "BindCraft Example",
+    "description": "An open-source and automated pipeline for de novo protein binder design.",
+    "type": "gpu",
+    "labels": ["bindcraft", "protein-design", "compbio"]
   },
   {
     "filename": "gpu/yuning.yaml",
@@ -167,55 +194,5 @@
     "description": "Runs an OpenMM molecular dynamics simulation (simulatePdb) on a GPU.",
     "type": "gpu",
     "labels": ["molecular-dynamics", "openmm", "compbio"]
-  },
-  {
-<<<<<<< HEAD
-    "filename": "cuda-bindcraft.yaml",
-    "title": "BindCraft Example",
-    "description": "An open-source and automated pipeline for de novo protein binder design",
-    "type": "gpu",
-    "labels": ["bindcraft", "protein-design", "compbio"]
-=======
-    "filename": "gpu/cuda-pytorch-cifar100.yaml",
-    "title": "PyTorch CIFAR-100 Training",
-    "description": "Trains a ResNet model on CIFAR-100 dataset using PyTorch on a GPU.",
-    "type": "gpu",
-    "labels": ["pytorch", "training", "ml", "cifar"]
-  },
-  {
-    "filename": "gpu/cuda-4xGPU-pytorch-cifar100.yaml",
-    "title": "PyTorch CIFAR-100 4-GPU Training",
-    "description": "Trains a ResNet model on CIFAR-100 dataset using PyTorch on 4 GPUs.",
-    "type": "gpu",
-    "labels": ["pytorch", "training", "ml", "cifar", "multigpu"]
-  },
-  {
-    "filename": "gpu/cuda-llamafactory-sft.yaml",
-    "title": "LlamaFactory SFT Training",
-    "description": "Supervised fine-tuning using LlamaFactory on a GPU.",
-    "type": "gpu",
-    "labels": ["llm", "training", "ml", "llamafactory", "sft"]
-  },
-  {
-    "filename": "gpu/cuda-llamafactory-lora-sft.yaml",
-    "title": "LlamaFactory LoRA SFT Training",
-    "description": "LoRA supervised fine-tuning of Llama 3 using LlamaFactory on a GPU.",
-    "type": "gpu",
-    "labels": ["llm", "training", "ml", "llamafactory", "lora", "sft"]
-  },
-  {
-    "filename": "gpu/cuda-2xGPU-llamafactory-lora-sft.yaml",
-    "title": "LlamaFactory LoRA SFT 2-GPU Training",
-    "description": "LoRA supervised fine-tuning of Llama 3 using LlamaFactory on 2 GPUs.",
-    "type": "gpu",
-    "labels": ["llm", "training", "ml", "llamafactory", "lora", "sft", "multigpu"]
-  },
-  {
-    "filename": "gpu/cuda-vllm-llama-3.1-8b.yaml",
-    "title": "vLLM Llama 3.1 8B Inference",
-    "description": "vLLM Llama 3.1 8B inference server with a readiness probe for restore vs. cold start benchmarking.",
-    "type": "gpu",
-    "labels": ["vllm", "llm", "inference", "llama"]
->>>>>>> b30a705 (fix: yamls)
   }
 ]
