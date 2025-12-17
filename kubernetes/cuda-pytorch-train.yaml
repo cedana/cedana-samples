@@ -7,9 +7,8 @@ spec:
   runtimeClassName: cedana # required for GPU C/R support (use nvidia for native)
   containers:
     - name: pytorch-train-nn
-      image: cedana/cedana-samples:cuda12.4-torch2.5
-      command:
-        ["python3", "-u", "gpu_smr/pytorch/training/test.py"]
+      image: cedana/cedana-samples:cuda
+      command: ["python3", "-u", "gpu_smr/pytorch/training/test.py"]
       resources:
         limits:
           nvidia.com/gpu: 1
