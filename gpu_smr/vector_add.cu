@@ -16,27 +16,7 @@ __global__ void vectorAdd(const float *A, const float *B, float *C, int N) {
 float *d_A = nullptr, *d_B = nullptr, *d_C = nullptr;
 float *h_A = nullptr, *h_B = nullptr, *h_C = nullptr;
 
-void handleSignal(int signal) {
-  std::cout << "\nSignal received (" << signal
-            << "). Cleaning up resources...\n";
-
-  if (d_A)
-    cudaFree(d_A);
-  if (d_B)
-    cudaFree(d_B);
-  if (d_C)
-    cudaFree(d_C);
-
-  if (h_A)
-    free(h_A);
-  if (h_B)
-    free(h_B);
-  if (h_C)
-    free(h_C);
-
-  std::cout << "Resources cleaned up. Exiting program.\n";
-  exit(signal);
-}
+void handleSignal(int signal) { exit(signal); }
 
 int main() {
   std::signal(SIGINT, handleSignal);
