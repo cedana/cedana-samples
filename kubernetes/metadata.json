@@ -49,6 +49,13 @@
     "labels": ["cuda", "math", "compute"]
   },
   {
+    "filename": "gpu/cuda-2xGPU-vector-add.yaml",
+    "title": "CUDA Vector Addition",
+    "description": "Runs CUDA vector addition to test multi-GPU checkpoint and restore.",
+    "type": "gpu",
+    "labels": ["cuda", "math", "compute", "multigpu"]
+  },
+  {
     "filename": "gpu/cuda-vector-add-multicontainer.yaml",
     "title": "CUDA Vector Addition (Multi-container)",
     "description": "Runs CUDA vector addition in a multi-container pod to test GPU checkpoint and restore.",
