@@ -1,14 +1,10 @@
 cmake_minimum_required(VERSION 3.8 FATAL_ERROR)
 
-project(cedana-bench LANGUAGES CXX CUDA)
-
-# XXX: Should be set based on CUDA version. E.g. CUDA v11 requires GCC <= v11
-# set(CMAKE_CUDA_HOST_COMPILER /usr/bin/g++-11) set(CMAKE_C_COMPILER
-# /usr/bin/gcc-11) set(CMAKE_CXX_COMPILER /usr/bin/g++-11)
-
 if(NOT DEFINED CMAKE_CUDA_ARCHITECTURES)
   set(CMAKE_CUDA_ARCHITECTURES 70) # minimum Volta
 endif()
+
+project(cedana-bench LANGUAGES CXX CUDA)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_BUILD_TYPE Release)
