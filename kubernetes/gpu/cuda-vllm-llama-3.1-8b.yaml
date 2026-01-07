@@ -31,9 +31,9 @@ spec:
     name: dgtest-vllm
     resources:
       limits:
-        nvidia.com/gpu: 1
+        nvidia.com/gpu: 4
       requests:
-        nvidia.com/gpu: 1
+        nvidia.com/gpu: 4
     volumeMounts:
     #   mountPath: /scripts
     - mountPath: /dev/shm
