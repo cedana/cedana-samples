@@ -1,0 +1,159 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  generateName: tensorflow-cifar100-
+  namespace: default
+spec:
+  runtimeClassName: cedana
+  restartPolicy: Never
+  containers:
+  - command:
+    - bash
+    - -c
+    - |
+      # Create the scripts directory
+      mkdir -p /data
+      rm -rf /data/*
+      # Create requirements.txt
+      cat > /data/requirements.txt << 'EOF'
+      tensorflow-datasets
+      tensorflow
+      EOF
+      
+      # Create tf_cifar100.py
+      cat > /data/tf_cifar100.py << 'EOF'
+      import argparse
+      import time
+
+      import tensorflow as tf
+      import tensorflow_datasets as tfds
+
+      strategy = tf.distribute.MirroredStrategy()
+      print(f"Number of devices: {strategy.num_replicas_in_sync}")
+
+      BUFFER_SIZE = 10000
+      BATCH_SIZE_PER_REPLICA = 64
+      # Calculate the global batch size. The dataset will yield batches of this size.
+      GLOBAL_BATCH_SIZE = BATCH_SIZE_PER_REPLICA * strategy.num_replicas_in_sync
+
+      def create_model():
+          return tf.keras.Sequential(
+              [
+                  tf.keras.layers.Conv2D(
+                      32, (3, 3), activation="relu", input_shape=(32, 32, 3)
+                  ),
+                  tf.keras.layers.MaxPooling2D((2, 2)),
+                  tf.keras.layers.Conv2D(64, (3, 3), activation="relu"),
+                  tf.keras.layers.MaxPooling2D((2, 2)),
+                  tf.keras.layers.Conv2D(64, (3, 3), activation="relu"),
+                  tf.keras.layers.Flatten(),
+                  tf.keras.layers.Dense(64, activation="relu"),
+                  tf.keras.layers.Dropout(0.2),
+                  tf.keras.layers.Dense(
+                      100, activation="softmax"
+                  ),  # 100 classes for CIFAR100
+              ]
+          )
+
+      def load_and_preprocess_data(data_dir=None):
+          # Load CIFAR100 dataset
+          print(f"Loading CIFAR100 data from {data_dir} using tensorflow_datasets...")
+          (ds_train, ds_test), _ = tfds.load(
+              "cifar100",
+              split=["train", "test"],
+              shuffle_files=True,
+              as_supervised=True,
+              with_info=True,
+              data_dir=data_dir,
+          )
+
+          def preprocess_image(image, label):
+              # CIFAR100 images are already 32x32x3, just normalize
+              return tf.cast(image, tf.float32) / 255.0, label
+
+          ds_train = (
+              ds_train.map(preprocess_image, num_parallel_calls=tf.data.AUTOTUNE)
+              .cache()
+              .shuffle(BUFFER_SIZE)
+              .batch(GLOBAL_BATCH_SIZE)
+              .prefetch(tf.data.AUTOTUNE)
+          )
+          ds_test = (
+              ds_test.map(preprocess_image, num_parallel_calls=tf.data.AUTOTUNE)
+              .cache()
+              .batch(GLOBAL_BATCH_SIZE)
+              .prefetch(tf.data.AUTOTUNE)
+          )
+          return ds_train, ds_test
+
+      def main():
+          parser = argparse.ArgumentParser(
+              description="TensorFlow CIFAR100 Example - Multi-GPU Version"
+          )
+          parser.add_argument(
+              "--epochs",
+              type=int,
+              default=15000,
+              help="Number of epochs to train (default: 15000)",
+          )
+          parser.add_argument(
+              "--data-dir",
+              type=str,
+              default=None,
+              help="Data directory for dataset storage (default: None)",
+          )
+          args = parser.parse_args()
+
+          print("Loading and preprocessing CIFAR100 data...")
+          train_dataset, test_dataset = load_and_preprocess_data(data_dir=args.data_dir)
+
+          # with strategy.scope():
+          model = create_model()
+          model.compile(
+              optimizer="adam",
+              loss="sparse_categorical_crossentropy",
+              metrics=["accuracy"],
+          )
+
+          print("Model built and compiled successfully within the MirroredStrategy scope.")
+          model.summary()
+
+          print("\nStarting training...")
+          start_time = time.time()
+
+          model.fit(train_dataset, epochs=args.epochs, validation_data=test_dataset)
+
+          end_time = time.time()
+          print(f"Training finished in {end_time - start_time:.2f} seconds.")
+
+      if __name__ == "__main__":
+          main()
+
+      EOF
+
+      pip3 install -r /data/requirements.txt;
+      python3 /data/tf_cifar100.py --epochs 300 --data-dir /data/
+    env:
+    - name: DEPLOY_VALUE
+      value: "2"
+    - name: PYTHONUNBUFFERED
+      value: "1"  
+    - name: PYTHONIOENCODING
+      value: "utf-8"  
+    image: nvcr.io/nvidia/tensorflow:25.02-tf2-py3
+    imagePullPolicy: Always
+    
+    name: tensorflow-cifar100
+    resources:
+      limits:
+        nvidia.com/gpu: 1
+      requests:
+        nvidia.com/gpu: 1
+    volumeMounts:
+      - name: dgtest-pvc
+        mountPath: /data/
+  
+  volumes:
+    - name: dgtest-pvc
+      persistentVolumeClaim:
+        claimName: dgtest-pvc
