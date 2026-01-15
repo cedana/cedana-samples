@@ -1,0 +1,240 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  generateName: hpl-linpack-
+  namespace: default
+spec:
+  restartPolicy: Never
+  containers:
+  - name: hpl-linpack
+    image: intel/oneapi-hpckit:2024.0.1-devel-ubuntu22.04
+    resources:
+      requests:
+        cpu: "4"
+        memory: "8Gi"
+      limits:
+        cpu: "4"
+        memory: "8Gi"
+    env:
+    - name: OMP_NUM_THREADS
+      value: "4"
+    command:
+    - bash
+    - -c
+    - |
+      echo "============================================================"
+      echo "HPL LINPACK Benchmark"
+      echo "============================================================"
+      echo "Starting at $(date)"
+      echo ""
+
+      mkdir -p /tmp/hpl && cd /tmp/hpl
+
+      # Create DGEMM benchmark in C (no Python dependency)
+      cat > linpack_bench.c << 'CEOF'
+      #include <stdio.h>
+      #include <stdlib.h>
+      #include <time.h>
+      #include <mkl.h>
+
+      double get_time() {
+          struct timespec ts;
+          clock_gettime(CLOCK_MONOTONIC, &ts);
+          return ts.tv_sec + ts.tv_nsec * 1e-9;
+      }
+
+      void run_dgemm(int n) {
+          printf("\n[LINPACK-style DGEMM] Matrix size: %d x %d\n", n, n);
+          printf("  Memory per matrix: %.2f GB\n", (double)n * n * 8 / 1e9);
+          fflush(stdout);
+
+          double *A = (double*)mkl_malloc(n * n * sizeof(double), 64);
+          double *B = (double*)mkl_malloc(n * n * sizeof(double), 64);
+          double *C = (double*)mkl_malloc(n * n * sizeof(double), 64);
+
+          if (!A || !B || !C) {
+              printf("  ERROR: Memory allocation failed\n");
+              if (A) mkl_free(A);
+              if (B) mkl_free(B);
+              if (C) mkl_free(C);
+              return;
+          }
+
+          printf("  Initializing matrices...\n");
+          fflush(stdout);
+
+          srand(42);
+          for (long i = 0; i < (long)n * n; i++) {
+              A[i] = (double)rand() / RAND_MAX;
+              B[i] = (double)rand() / RAND_MAX;
+              C[i] = 0.0;
+          }
+
+          double alpha = 1.0, beta = 0.0;
+
+          // Warm-up run
+          printf("  Warm-up run...\n");
+          fflush(stdout);
+          cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
+                      n, n, n, alpha, A, n, B, n, beta, C, n);
+
+          // Timed run
+          printf("  Timed DGEMM...\n");
+          fflush(stdout);
+
+          double start = get_time();
+          cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
+                      n, n, n, alpha, A, n, B, n, beta, C, n);
+          double elapsed = get_time() - start;
+
+          // Calculate FLOPS: 2*N^3 for matrix multiply
+          double flops = 2.0 * (double)n * (double)n * (double)n;
+          double gflops = flops / elapsed / 1e9;
+
+          printf("  Time: %.3f seconds\n", elapsed);
+          printf("  Performance: %.2f GFLOPS\n", gflops);
+
+          // Checksum for verification
+          double checksum = 0.0;
+          for (long i = 0; i < (long)n * n; i++) {
+              checksum += C[i];
+          }
+          printf("  Checksum: %.6e\n", checksum);
+          fflush(stdout);
+
+          mkl_free(A);
+          mkl_free(B);
+          mkl_free(C);
+      }
+
+      void run_lu_solve(int n) {
+          printf("\n[LINPACK LU Solve] Matrix size: %d x %d\n", n, n);
+          fflush(stdout);
+
+          double *A = (double*)mkl_malloc(n * n * sizeof(double), 64);
+          double *b = (double*)mkl_malloc(n * sizeof(double), 64);
+          int *ipiv = (int*)mkl_malloc(n * sizeof(int), 64);
+
+          if (!A || !b || !ipiv) {
+              printf("  ERROR: Memory allocation failed\n");
+              return;
+          }
+
+          // Initialize with diagonally dominant matrix for stability
+          srand(123);
+          for (int i = 0; i < n; i++) {
+              for (int j = 0; j < n; j++) {
+                  A[i * n + j] = (double)rand() / RAND_MAX;
+                  if (i == j) A[i * n + j] += n;  // Diagonal dominance
+              }
+              b[i] = (double)rand() / RAND_MAX;
+          }
+
+          printf("  Running LU factorization + solve...\n");
+          fflush(stdout);
+
+          double start = get_time();
+
+          // LU factorization
+          int info = LAPACKE_dgetrf(LAPACK_ROW_MAJOR, n, n, A, n, ipiv);
+          if (info != 0) {
+              printf("  ERROR: LU factorization failed (info=%d)\n", info);
+              mkl_free(A); mkl_free(b); mkl_free(ipiv);
+              return;
+          }
+
+          // Solve using LU factors
+          info = LAPACKE_dgetrs(LAPACK_ROW_MAJOR, 'N', n, 1, A, n, ipiv, b, 1);
+          if (info != 0) {
+              printf("  ERROR: Solve failed (info=%d)\n", info);
+          }
+
+          double elapsed = get_time() - start;
+
+          // FLOPS: ~2/3 * N^3 for LU + 2*N^2 for solve
+          double flops = (2.0/3.0) * (double)n * (double)n * (double)n + 2.0 * (double)n * (double)n;
+          double gflops = flops / elapsed / 1e9;
+
+          printf("  Time: %.3f seconds\n", elapsed);
+          printf("  Performance: %.2f GFLOPS\n", gflops);
+          fflush(stdout);
+
+          mkl_free(A);
+          mkl_free(b);
+          mkl_free(ipiv);
+      }
+
+      int main() {
+          printf("============================================================\n");
+          printf("LINPACK-style Benchmark (using Intel MKL)\n");
+          printf("============================================================\n");
+          printf("MKL threads: %d\n", mkl_get_max_threads());
+          printf("\nThis benchmark measures dense linear algebra performance,\n");
+          printf("similar to the HPL (High Performance Linpack) benchmark.\n");
+          fflush(stdout);
+
+          printf("\n------------------------------------------------------------\n");
+          printf("DGEMM (Dense Matrix Multiplication)\n");
+          printf("------------------------------------------------------------\n");
+
+          // Run DGEMM at various sizes
+          int sizes[] = {1000, 2000, 4000, 6000, 8000, 10000};
+          int num_sizes = sizeof(sizes) / sizeof(sizes[0]);
+
+          for (int i = 0; i < num_sizes; i++) {
+              run_dgemm(sizes[i]);
+          }
+
+          printf("\n------------------------------------------------------------\n");
+          printf("LU Factorization + Solve (Classic LINPACK)\n");
+          printf("------------------------------------------------------------\n");
+
+          int lu_sizes[] = {2000, 4000, 6000, 8000};
+          int num_lu_sizes = sizeof(lu_sizes) / sizeof(lu_sizes[0]);
+
+          for (int i = 0; i < num_lu_sizes; i++) {
+              run_lu_solve(lu_sizes[i]);
+          }
+
+          printf("\n============================================================\n");
+          printf("LINPACK Benchmark Complete!\n");
+          printf("============================================================\n");
+
+          return 0;
+      }
+      CEOF
+
+      echo "Compiling LINPACK benchmark..."
+
+      # Compile with Intel compiler or gcc
+      if command -v icx &> /dev/null; then
+          icx -O3 -xHost -qopenmp linpack_bench.c -o linpack_bench \
+              -I${MKLROOT}/include \
+              -L${MKLROOT}/lib/intel64 \
+              -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core \
+              -liomp5 -lpthread -lm -ldl
+      else
+          gcc -O3 -march=native -fopenmp linpack_bench.c -o linpack_bench \
+              -I${MKLROOT}/include \
+              -L${MKLROOT}/lib/intel64 \
+              -Wl,--no-as-needed -lmkl_intel_lp64 -lmkl_gnu_thread -lmkl_core \
+              -lgomp -lpthread -lm -ldl
+      fi
+
+      if [ ! -f linpack_bench ]; then
+          echo "Compilation failed!"
+          exit 1
+      fi
+
+      echo "Compilation successful!"
+      echo ""
+      echo "Running LINPACK benchmark..."
+      echo ""
+
+      ./linpack_bench
+
+      echo ""
+      echo "============================================================"
+      echo "HPL/LINPACK Benchmark Complete"
+      echo "Finished at $(date)"
+      echo "============================================================"
