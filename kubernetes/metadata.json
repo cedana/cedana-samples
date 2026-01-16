@@ -165,7 +165,15 @@
     "title": "LlamaFactory LoRA SFT 2-GPU Training",
     "description": "LoRA supervised fine-tuning of Llama 3 using LlamaFactory on 2 GPUs.",
     "type": "gpu",
-    "labels": ["llm", "training", "ml", "llamafactory", "lora", "sft", "multigpu"]
+    "labels": [
+      "llm",
+      "training",
+      "ml",
+      "llamafactory",
+      "lora",
+      "sft",
+      "multigpu"
+    ]
   },
   {
     "filename": "gpu/cuda-bindcraft.yaml",
@@ -201,5 +209,90 @@
     "description": "Runs an OpenMM molecular dynamics simulation (simulatePdb) on a GPU.",
     "type": "gpu",
     "labels": ["molecular-dynamics", "openmm", "compbio"]
+  },
+  {
+    "filename": "gpu/cuda-tensorflow-cifar100.yaml",
+    "title": "TensorFlow CIFAR-100 Training",
+    "description": "Trains a CNN model on CIFAR-100 dataset using TensorFlow on a single GPU.",
+    "type": "gpu",
+    "labels": ["tensorflow", "training", "ml", "cifar"]
+  },
+  {
+    "filename": "gpu/cuda-2xGPU-tensorflow-cifar100.yaml",
+    "title": "TensorFlow CIFAR-100 2-GPU Training",
+    "description": "Trains a CNN model on CIFAR-100 dataset using TensorFlow MirroredStrategy on 2 GPUs.",
+    "type": "gpu",
+    "labels": ["tensorflow", "training", "ml", "cifar", "multigpu"]
+  },
+  {
+    "filename": "gpu/cuda-jupyter-notebook.yaml",
+    "title": "Jupyter Notebook with GPU (PyTorch)",
+    "description": "Jupyter Lab server with GPU support and PyTorch for interactive development.",
+    "type": "gpu",
+    "labels": ["interactive", "jupyter", "data-science", "pytorch"]
+  },
+  {
+    "filename": "cpu/blast-sequence-alignment.yaml",
+    "title": "BLAST Sequence Alignment",
+    "description": "NCBI BLAST protein sequence alignment benchmark with SwissProt database.",
+    "type": "cpu",
+    "labels": ["bioinformatics", "blast", "compbio", "benchmark"]
+  },
+  {
+    "filename": "cpu/hpl-linpack.yaml",
+    "title": "HPL LINPACK Benchmark",
+    "description": "High Performance LINPACK benchmark using Intel MKL for dense linear algebra.",
+    "type": "cpu",
+    "labels": ["benchmark", "linpack", "hpc", "linear-algebra"]
+  },
+  {
+    "filename": "cpu/intel-mkl-benchmarks.yaml",
+    "title": "Intel MKL Benchmark Suite",
+    "description": "Comprehensive Intel MKL benchmarks including DGEMM, LU, Cholesky, and FFT.",
+    "type": "cpu",
+    "labels": ["benchmark", "mkl", "blas", "lapack", "fft"]
+  },
+  {
+    "filename": "cpu/lammps-molecular-dynamics.yaml",
+    "title": "LAMMPS Molecular Dynamics",
+    "description": "LAMMPS molecular dynamics simulation of Lennard-Jones fluid system.",
+    "type": "cpu",
+    "labels": ["molecular-dynamics", "lammps", "compbio", "simulation"]
+  },
+  {
+    "filename": "cpu/monte-carlo-pi.yaml",
+    "title": "Monte Carlo Pi Estimation",
+    "description": "Monte Carlo simulation for estimating Pi using random sampling with stateful computation.",
+    "type": "cpu",
+    "labels": ["monte-carlo", "simulation", "benchmark"]
+  },
+  {
+    "filename": "cpu/numpy-matrix-ops.yaml",
+    "title": "NumPy/SciPy Matrix Operations",
+    "description": "Comprehensive NumPy and SciPy matrix operations benchmark including DGEMM, LU, QR, SVD, and eigenvalue decomposition.",
+    "type": "cpu",
+    "labels": ["numpy", "scipy", "linear-algebra", "benchmark"]
+  },
+  {
+    "filename": "cpu/password-hashing-benchmark.yaml",
+    "title": "Password Hashing Benchmark",
+    "description": "Memory-hard and CPU-intensive password hashing benchmark with Argon2, bcrypt, and scrypt.",
+    "type": "cpu",
+    "labels": ["security", "cryptography", "benchmark", "argon2", "bcrypt"]
+  },
+  {
+    "filename": "cpu/sklearn-random-forest.yaml",
+    "title": "Scikit-learn Random Forest Training",
+    "description": "Trains Random Forest and Extra Trees models on large synthetic datasets using scikit-learn.",
+    "type": "cpu",
+    "labels": ["sklearn", "random-forest", "ml", "training"]
+  },
+  {
+    "filename": "cpu/xgboost-training.yaml",
+    "title": "XGBoost CPU Training",
+    "description": "Gradient boosting model training on synthetic datasets using XGBoost CPU backend.",
+    "type": "cpu",
+    "labels": ["xgboost", "gradient-boosting", "ml", "training"]
   }
 ]
+
