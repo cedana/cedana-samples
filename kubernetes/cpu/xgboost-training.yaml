@@ -1,0 +1,230 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  generateName: xgboost-training-
+  namespace: default
+spec:
+  restartPolicy: Never
+  containers:
+  - name: xgboost
+    image: python:3.11-slim
+    resources:
+      requests:
+        cpu: "4"
+        memory: "8Gi"
+      limits:
+        cpu: "4"
+        memory: "8Gi"
+    command:
+    - bash
+    - -c
+    - |
+      pip install xgboost scikit-learn pandas numpy --quiet
+      python3 << 'EOF'
+      """
+      XGBoost CPU Training Benchmark
+
+      Trains gradient boosting models on synthetic datasets of varying sizes.
+      XGBoost builds trees iteratively, maintaining significant state including:
+      - Tree structures built so far
+      - Gradient/Hessian statistics
+      - Prediction cache
+
+      This makes it ideal for checkpoint/restore testing.
+      """
+      import xgboost as xgb
+      import numpy as np
+      from sklearn.datasets import make_classification, make_regression
+      from sklearn.model_selection import train_test_split
+      from sklearn.metrics import accuracy_score, mean_squared_error, r2_score
+      import time
+      import sys
+
+      print("=" * 70)
+      print("XGBoost CPU Training Benchmark")
+      print("=" * 70)
+      print(f"XGBoost version: {xgb.__version__}")
+      print()
+
+      # Custom callback to show progress
+      class ProgressCallback(xgb.callback.TrainingCallback):
+          def __init__(self, total_rounds):
+              self.total_rounds = total_rounds
+              self.start_time = None
+
+          def before_training(self, model):
+              self.start_time = time.time()
+              return model
+
+          def after_iteration(self, model, epoch, evals_log):
+              if (epoch + 1) % 50 == 0 or epoch == 0:
+                  elapsed = time.time() - self.start_time
+                  rate = (epoch + 1) / elapsed
+                  eta = (self.total_rounds - epoch - 1) / rate if rate > 0 else 0
+                  metrics = ""
+                  if evals_log:
+                      for data_name, metric_dict in evals_log.items():
+                          for metric_name, values in metric_dict.items():
+                              metrics += f" {data_name}-{metric_name}: {values[-1]:.4f}"
+                  print(f"  Round {epoch+1:4d}/{self.total_rounds} |{metrics} | "
+                        f"Rate: {rate:.1f} rounds/s | ETA: {eta:.0f}s")
+                  sys.stdout.flush()
+              return False
+
+      def run_classification_benchmark(n_samples, n_features, n_rounds):
+          """Train XGBoost classifier on synthetic data."""
+          print(f"\n--- Classification: {n_samples:,} samples, {n_features} features ---")
+
+          # Generate synthetic classification data
+          print("  Generating data...")
+          X, y = make_classification(
+              n_samples=n_samples,
+              n_features=n_features,
+              n_informative=n_features // 2,
+              n_redundant=n_features // 4,
+              n_classes=2,
+              random_state=42
+          )
+
+          X_train, X_test, y_train, y_test = train_test_split(
+              X, y, test_size=0.2, random_state=42
+          )
+
+          print(f"  Train: {X_train.shape}, Test: {X_test.shape}")
+
+          # Create DMatrix for XGBoost
+          dtrain = xgb.DMatrix(X_train, label=y_train)
+          dtest = xgb.DMatrix(X_test, label=y_test)
+
+          # Parameters
+          params = {
+              'objective': 'binary:logistic',
+              'eval_metric': ['logloss', 'auc'],
+              'max_depth': 8,
+              'eta': 0.1,
+              'subsample': 0.8,
+              'colsample_bytree': 0.8,
+              'tree_method': 'hist',  # CPU-optimized
+              'nthread': 4,
+              'seed': 42
+          }
+
+          print(f"  Training {n_rounds} rounds...")
+          start = time.time()
+
+          model = xgb.train(
+              params,
+              dtrain,
+              num_boost_round=n_rounds,
+              evals=[(dtrain, 'train'), (dtest, 'test')],
+              callbacks=[ProgressCallback(n_rounds)],
+              verbose_eval=False
+          )
+
+          elapsed = time.time() - start
+
+          # Evaluate
+          y_pred = (model.predict(dtest) > 0.5).astype(int)
+          accuracy = accuracy_score(y_test, y_pred)
+
+          print(f"  Completed in {elapsed:.2f}s")
+          print(f"  Test Accuracy: {accuracy:.4f}")
+          print(f"  Trees built: {model.num_boosted_rounds()}")
+
+          return model, elapsed
+
+      def run_regression_benchmark(n_samples, n_features, n_rounds):
+          """Train XGBoost regressor on synthetic data."""
+          print(f"\n--- Regression: {n_samples:,} samples, {n_features} features ---")
+
+          # Generate synthetic regression data
+          print("  Generating data...")
+          X, y = make_regression(
+              n_samples=n_samples,
+              n_features=n_features,
+              n_informative=n_features // 2,
+              noise=0.1,
+              random_state=42
+          )
+
+          X_train, X_test, y_train, y_test = train_test_split(
+              X, y, test_size=0.2, random_state=42
+          )
+
+          print(f"  Train: {X_train.shape}, Test: {X_test.shape}")
+
+          dtrain = xgb.DMatrix(X_train, label=y_train)
+          dtest = xgb.DMatrix(X_test, label=y_test)
+
+          params = {
+              'objective': 'reg:squarederror',
+              'eval_metric': 'rmse',
+              'max_depth': 8,
+              'eta': 0.1,
+              'subsample': 0.8,
+              'colsample_bytree': 0.8,
+              'tree_method': 'hist',
+              'nthread': 4,
+              'seed': 42
+          }
+
+          print(f"  Training {n_rounds} rounds...")
+          start = time.time()
+
+          model = xgb.train(
+              params,
+              dtrain,
+              num_boost_round=n_rounds,
+              evals=[(dtrain, 'train'), (dtest, 'test')],
+              callbacks=[ProgressCallback(n_rounds)],
+              verbose_eval=False
+          )
+
+          elapsed = time.time() - start
+
+          # Evaluate
+          y_pred = model.predict(dtest)
+          rmse = np.sqrt(mean_squared_error(y_test, y_pred))
+          r2 = r2_score(y_test, y_pred)
+
+          print(f"  Completed in {elapsed:.2f}s")
+          print(f"  Test RMSE: {rmse:.4f}")
+          print(f"  Test R²: {r2:.4f}")
+
+          return model, elapsed
+
+      # Run benchmarks with increasing complexity
+      results = []
+
+      # Small dataset, many rounds
+      _, t = run_classification_benchmark(50_000, 50, 500)
+      results.append(('classification_50k', t))
+
+      # Medium dataset
+      _, t = run_classification_benchmark(200_000, 100, 300)
+      results.append(('classification_200k', t))
+
+      # Large dataset
+      _, t = run_classification_benchmark(500_000, 100, 200)
+      results.append(('classification_500k', t))
+
+      # Regression benchmarks
+      _, t = run_regression_benchmark(100_000, 50, 500)
+      results.append(('regression_100k', t))
+
+      _, t = run_regression_benchmark(300_000, 100, 300)
+      results.append(('regression_300k', t))
+
+      # Summary
+      print()
+      print("=" * 70)
+      print("BENCHMARK SUMMARY")
+      print("=" * 70)
+      total_time = 0
+      for name, elapsed in results:
+          print(f"  {name:30s}: {elapsed:8.2f}s")
+          total_time += elapsed
+      print("-" * 70)
+      print(f"  {'TOTAL':30s}: {total_time:8.2f}s")
+      print("=" * 70)
+      EOF

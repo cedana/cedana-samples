@@ -1,0 +1,294 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  generateName: blast-alignment-
+  namespace: default
+spec:
+  restartPolicy: Never
+  containers:
+  - name: blast
+    image: ncbi/blast:latest
+    resources:
+      requests:
+        cpu: "4"
+        memory: "8Gi"
+      limits:
+        cpu: "4"
+        memory: "8Gi"
+    command:
+    - bash
+    - -c
+    - |
+      set -e
+      echo "============================================================"
+      echo "NCBI BLAST Sequence Alignment Benchmark"
+      echo "============================================================"
+      echo ""
+
+      mkdir -p /tmp/blast && cd /tmp/blast
+
+      # Download the SwissProt database (real protein database)
+      echo "Downloading SwissProt BLAST database (~1.5GB)..."
+      echo "This provides a realistic search space for benchmarking."
+      echo ""
+
+      if update_blastdb.pl --decompress swissprot; then
+        echo "SwissProt database downloaded successfully."
+        DB="swissprot"
+      else
+        echo "Failed to download SwissProt, building large synthetic database..."
+
+        # Generate a much larger synthetic protein database
+        python3 << 'PYGEN'
+      import random
+      import sys
+
+      # Amino acid alphabet
+      AA = "ACDEFGHIKLMNPQRSTVWY"
+
+      # Real protein domain patterns for realistic sequences
+      DOMAINS = [
+          "MRPSGTAGAALLALLAALCPASRALEEKKVCQGTSNKLTQLGTFEDHFLSLQRMFNNCEV",
+          "MEEPQSDPSVEPPLSQETFSDLWKLLPENNVLSPLPSQAMDDLMLSPDDIEQWFTEDPGP",
+          "MVLSPADKTNVKAAWGKVGAHAGEYGAEALERMFLSFPTTKTYFPHFDLSHGSAQVKGHG",
+          "MKWVTFISLLFLFSSAYSRGVFRRDAHKSEVAHRFKDLGEENFKALVLIAFAQYLQQCPF",
+          "MALWMRLLPLLALLALWGPDPAAAFVNQHLCGSHLVEALYLVCGERGFFYTPKTRREAED",
+          "MNIFEMLRIDEGLRLKIYKDTEGYYTIGIGHLLTKSPSLNAAKSELDKAIGRNTNGVITKD",
+          "MGSSHHHHHHSSGLVPRGSHMRGPNPTAASLEASAGPFTVRSFTVSRPSGYGAGTVYYPTNA",
+          "MVRSKTLVLLFSMFVFLVLGFPLFFNFEGPAAPAPASIFESSQDKGTSPALKIVRGIEDSI",
+      ]
+
+      random.seed(42)
+      num_sequences = 50000  # 50K sequences for substantial database
+
+      print(f"Generating {num_sequences} protein sequences...", file=sys.stderr)
+
+      with open("proteins.fasta", "w") as f:
+          for i in range(num_sequences):
+              # Mix real domains with random mutations
+              base = random.choice(DOMAINS)
+              # Add random extensions
+              length = random.randint(100, 500)
+              seq = base
+
+              # Mutate ~10% of positions
+              seq_list = list(seq)
+              for j in range(len(seq_list)):
+                  if random.random() < 0.1:
+                      seq_list[j] = random.choice(AA)
+              seq = "".join(seq_list)
+
+              # Extend to target length
+              while len(seq) < length:
+                  seq += random.choice(AA)
+              seq = seq[:length]
+
+              f.write(f">protein_{i:06d} Synthetic protein {i}\n")
+              # Write sequence in 60-char lines
+              for j in range(0, len(seq), 60):
+                  f.write(seq[j:j+60] + "\n")
+
+              if (i + 1) % 10000 == 0:
+                  print(f"  Generated {i+1}/{num_sequences} sequences...", file=sys.stderr)
+
+      print(f"Done generating {num_sequences} sequences.", file=sys.stderr)
+      PYGEN
+
+        echo "Creating BLAST database from synthetic sequences..."
+        makeblastdb -in proteins.fasta -dbtype prot -out testdb -title "Synthetic Protein DB (50K sequences)"
+        DB="testdb"
+      fi
+
+      # Generate many query sequences for longer runtime
+      echo ""
+      echo "Generating query sequences..."
+      python3 << 'QUERYGEN'
+      import random
+
+      AA = "ACDEFGHIKLMNPQRSTVWY"
+      TEMPLATES = [
+          "MEEPQSDPSVEPPLSQETFSDLWKLLPENNVLSPLPSQAMDDLMLSPDDIEQWFTEDPGPDEAPRMPEAAPPVAPAPAAPTPAAPAPAPSWPLSSSVPSQKTYQGSYGFRLGFLHSGTAKSVTCTYSPALNKMFCQLAKTCPVQLWVDSTPPPGTRVRAMAIYKQSQHMTEVVRRCPHHE",
+          "MVLSPADKTNVKAAWGKVGAHAGEYGAEALERMFLSFPTTKTYFPHFDLSHGSAQVKGHGKKVADALTNAVAHVDDMPNALSALSDLHAHKLRVDPVNFKLLSHCLLVTLAAHLPAEFTPAVHASLDKFLASVSTVLTSKYR",
+          "MRPSGTAGAALLALLAALCPASRALEEKKVCQGTSNKLTQLGTFEDHFLSLQRMFNNCEVVLGNLEITYVQRNYDLSFLKTIQEVAGYVLIALNTVERIPLENLQIIRGNMYYENSYALAVLSNYDANKTGLKELPMRNLQEILHGAVRFSNNPALCNVESIQWRDIVSSDFLSNMSMDF",
+          "MKWVTFISLLFLFSSAYSRGVFRRDAHKSEVAHRFKDLGEENFKALVLIAFAQYLQQCPFEDHVKLVNEVTEFAKTCVADESAENCDKSLHTLFGDKLCTVATLRETYGEMADCCAKQEPERNECFLQHKDDNPNLPRLVRPEVDVMCTAFHDNEETFLKKYLYEIARRHPYFYAPELLF",
+      ]
+
+      random.seed(123)
+      num_queries = 100  # 100 queries for substantial runtime
+
+      with open("query.fasta", "w") as f:
+          for i in range(num_queries):
+              template = random.choice(TEMPLATES)
+              # Mutate 5-15% of positions
+              mutation_rate = random.uniform(0.05, 0.15)
+              seq_list = list(template)
+              for j in range(len(seq_list)):
+                  if random.random() < mutation_rate:
+                      seq_list[j] = random.choice(AA)
+              seq = "".join(seq_list)
+
+              # Truncate to random length
+              length = random.randint(80, len(seq))
+              seq = seq[:length]
+
+              f.write(f">query_{i:03d} Unknown protein sequence {i}\n")
+              for j in range(0, len(seq), 60):
+                  f.write(seq[j:j+60] + "\n")
+
+      print(f"Generated {num_queries} query sequences.")
+      QUERYGEN
+
+      echo ""
+      echo "============================================================"
+      echo "Running BLASTP (protein-protein BLAST)"
+      echo "============================================================"
+      echo "Database: $DB"
+      echo "Queries: 100 sequences"
+      echo "Threads: 4"
+      echo ""
+
+      START_TIME=$(date +%s)
+
+      # Run BLASTP with all queries
+      blastp \
+        -query query.fasta \
+        -db $DB \
+        -out blastp_results.txt \
+        -outfmt "7 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore" \
+        -num_threads 4 \
+        -evalue 0.001 \
+        -max_target_seqs 500
+
+      BLASTP_TIME=$(($(date +%s) - START_TIME))
+      echo "BLASTP completed in ${BLASTP_TIME} seconds"
+      echo ""
+
+      # Count results
+      HITS=$(grep -c "^query" blastp_results.txt 2>/dev/null || echo "0")
+      echo "Total alignments found: $HITS"
+      echo ""
+      echo "Sample results (first 30 lines):"
+      head -30 blastp_results.txt
+
+      echo ""
+      echo "============================================================"
+      echo "Running iterative PSI-BLAST (5 iterations)"
+      echo "============================================================"
+      echo ""
+
+      START_TIME=$(date +%s)
+
+      # PSI-BLAST with more iterations - builds PSSM iteratively
+      # Using first 20 queries for PSI-BLAST (it's slower)
+      head -100 query.fasta > psi_query.fasta
+
+      psiblast \
+        -query psi_query.fasta \
+        -db $DB \
+        -out psiblast_results.txt \
+        -num_iterations 5 \
+        -num_threads 4 \
+        -evalue 0.001 \
+        -inclusion_ethresh 0.002
+
+      PSIBLAST_TIME=$(($(date +%s) - START_TIME))
+      echo ""
+      echo "PSI-BLAST completed in ${PSIBLAST_TIME} seconds"
+      echo "PSI-BLAST iteratively refines position-specific scoring matrices."
+      echo ""
+      echo "Sample PSI-BLAST results:"
+      head -50 psiblast_results.txt
+
+      echo ""
+      echo "============================================================"
+      echo "Running TBLASTN (protein vs translated nucleotide)"
+      echo "============================================================"
+      echo ""
+
+      # Generate synthetic nucleotide database
+      python3 << 'NUCGEN'
+      import random
+
+      CODONS = {
+          'A': ['GCT', 'GCC', 'GCA', 'GCG'],
+          'C': ['TGT', 'TGC'],
+          'D': ['GAT', 'GAC'],
+          'E': ['GAA', 'GAG'],
+          'F': ['TTT', 'TTC'],
+          'G': ['GGT', 'GGC', 'GGA', 'GGG'],
+          'H': ['CAT', 'CAC'],
+          'I': ['ATT', 'ATC', 'ATA'],
+          'K': ['AAA', 'AAG'],
+          'L': ['TTA', 'TTG', 'CTT', 'CTC', 'CTA', 'CTG'],
+          'M': ['ATG'],
+          'N': ['AAT', 'AAC'],
+          'P': ['CCT', 'CCC', 'CCA', 'CCG'],
+          'Q': ['CAA', 'CAG'],
+          'R': ['CGT', 'CGC', 'CGA', 'CGG', 'AGA', 'AGG'],
+          'S': ['TCT', 'TCC', 'TCA', 'TCG', 'AGT', 'AGC'],
+          'T': ['ACT', 'ACC', 'ACA', 'ACG'],
+          'V': ['GTT', 'GTC', 'GTA', 'GTG'],
+          'W': ['TGG'],
+          'Y': ['TAT', 'TAC'],
+      }
+
+      random.seed(456)
+
+      # Read some protein sequences and convert to DNA
+      with open("proteins.fasta", "r") as f:
+          proteins = []
+          current_seq = ""
+          for line in f:
+              if line.startswith(">"):
+                  if current_seq:
+                      proteins.append(current_seq)
+                  current_seq = ""
+              else:
+                  current_seq += line.strip()
+          if current_seq:
+              proteins.append(current_seq)
+
+      # Take first 5000 proteins and convert to DNA
+      with open("nucleotides.fasta", "w") as f:
+          for i, prot in enumerate(proteins[:5000]):
+              dna = ""
+              for aa in prot:
+                  if aa in CODONS:
+                      dna += random.choice(CODONS[aa])
+              f.write(f">gene_{i:05d} Synthetic gene {i}\n")
+              for j in range(0, len(dna), 60):
+                  f.write(dna[j:j+60] + "\n")
+
+      print("Generated 5000 nucleotide sequences.")
+      NUCGEN
+
+      makeblastdb -in nucleotides.fasta -dbtype nucl -out nucdb -title "Synthetic Nucleotide DB"
+
+      START_TIME=$(date +%s)
+
+      # Run TBLASTN (slower - translates DB in all 6 frames)
+      tblastn \
+        -query psi_query.fasta \
+        -db nucdb \
+        -out tblastn_results.txt \
+        -num_threads 4 \
+        -evalue 0.01 \
+        -max_target_seqs 100
+
+      TBLASTN_TIME=$(($(date +%s) - START_TIME))
+      echo "TBLASTN completed in ${TBLASTN_TIME} seconds"
+
+      echo ""
+      echo "============================================================"
+      echo "BENCHMARK SUMMARY"
+      echo "============================================================"
+      echo "BLASTP time:    ${BLASTP_TIME}s (100 queries vs protein DB)"
+      echo "PSI-BLAST time: ${PSIBLAST_TIME}s (20 queries, 5 iterations)"
+      echo "TBLASTN time:   ${TBLASTN_TIME}s (20 queries vs translated nucl DB)"
+      TOTAL=$((BLASTP_TIME + PSIBLAST_TIME + TBLASTN_TIME))
+      echo "------------------------------------------------------------"
+      echo "Total time:     ${TOTAL}s"
+      echo "============================================================"
+      echo ""
+      echo "Output files:"
+      ls -lh /tmp/blast/

@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: dgtest-pvc
+  namespace: default
+spec:
+  accessModes:
+  - ReadWriteOnce
+  storageClassName: compute-csi-default-sc
+  volumeMode: Filesystem
+  resources:
+    requests:
+      storage: 100Gi
+
