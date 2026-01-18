@@ -4,161 +4,255 @@
     "title": "Timestamp Logger",
     "description": "Continuously logs timestamps in a pod for manual checkpoint/restore testing.",
     "type": "cpu",
-    "labels": ["timer"]
+    "labels": [
+      "timer"
+    ]
   },
   {
     "filename": "cpu/counting-deployment.yaml",
     "title": "Timestamp Logger (Deployment)",
     "description": "Continuously logs timestamps in a deployment for automatic restore testing.",
     "type": "cpu",
-    "labels": ["logging", "timer", "deployment"]
+    "labels": [
+      "logging",
+      "timer",
+      "deployment"
+    ]
   },
   {
     "filename": "cpu/counting-persistent-volume.yaml",
     "title": "Simple Counter (Persistent Volume)",
     "description": "Tests reading from a persistent volume for persistent volume checkpoint/restore testing.",
     "type": "cpu",
-    "labels": ["counter", "storage", "persistent-volume"]
+    "labels": [
+      "counter",
+      "storage",
+      "persistent-volume"
+    ]
   },
   {
     "filename": "cpu/counting-multicontainer.yaml",
     "title": "Timestamp Logger (Multi-container)",
     "description": "Continuously logs timestamps in a multi-container pod for manual checkpoint/restore testing.",
     "type": "cpu",
-    "labels": ["logging", "timer", "multicontainer"]
+    "labels": [
+      "logging",
+      "timer",
+      "multicontainer"
+    ]
   },
   {
     "filename": "cpu/nginx-deployment.yaml",
     "title": "NGINX Server (Deployment)",
     "description": "NGINX deployment for automatic restore testing.",
     "type": "cpu",
-    "labels": ["web", "server", "nginx"]
+    "labels": [
+      "web",
+      "server",
+      "nginx"
+    ]
   },
   {
     "filename": "cpu/jupyter-notebook.yaml",
     "title": "Jupyter Notebook Server",
     "description": "Jupyter notebook server pod with token authentication for manual checkpoint/restore testing.",
     "type": "cpu",
-    "labels": ["interactive", "jupyter", "data-science"]
+    "labels": [
+      "interactive",
+      "jupyter",
+      "data-science"
+    ]
   },
   {
     "filename": "gpu/cuda-vector-add.yaml",
     "title": "CUDA Vector Addition",
     "description": "Runs CUDA vector addition to test GPU checkpoint and restore.",
     "type": "gpu",
-    "labels": ["cuda", "math", "compute"]
+    "labels": [
+      "cuda",
+      "math",
+      "compute"
+    ]
   },
   {
     "filename": "gpu/cuda-2xGPU-vector-add.yaml",
     "title": "CUDA Vector Addition",
     "description": "Runs CUDA vector addition to test multi-GPU checkpoint and restore.",
     "type": "gpu",
-    "labels": ["cuda", "math", "compute", "multigpu"]
+    "labels": [
+      "cuda",
+      "math",
+      "compute",
+      "multigpu"
+    ]
   },
   {
     "filename": "gpu/cuda-vector-add-multicontainer.yaml",
     "title": "CUDA Vector Addition (Multi-container)",
     "description": "Runs CUDA vector addition in a multi-container pod to test GPU checkpoint and restore.",
     "type": "gpu",
-    "labels": ["cuda", "math", "multicontainer"]
+    "labels": [
+      "cuda",
+      "math",
+      "multicontainer"
+    ]
   },
   {
     "filename": "gpu/cuda-mem-throughput.yaml",
     "title": "CUDA Memory Throughput",
     "description": "Measures CUDA memory throughput for GPU performance testing.",
     "type": "gpu",
-    "labels": ["cuda", "benchmark", "memory"]
+    "labels": [
+      "cuda",
+      "benchmark",
+      "memory"
+    ]
   },
   {
     "filename": "gpu/cuda-gpu-train-simple.yaml",
     "title": "Simple PyTorch Training",
     "description": "Simple PyTorch training job for GPU checkpoint and restore testing.",
     "type": "gpu",
-    "labels": ["pytorch", "training", "ml"]
+    "labels": [
+      "pytorch",
+      "training",
+      "ml"
+    ]
   },
   {
     "filename": "gpu/cuda-transformers-gpt2.yml",
     "title": "GPT-2 Transformer Inference",
     "description": "GPT-2 inference server with a readiness probe for restore vs. cold start benchmarking.",
     "type": "gpu",
-    "labels": ["transformers", "llm", "inference"]
+    "labels": [
+      "transformers",
+      "llm",
+      "inference"
+    ]
   },
   {
     "filename": "gpu/cuda-transformers-gpt2-xl.yml",
     "title": "GPT-2 XL Transformer Inference",
     "description": "GPT-2 XL inference server with a readiness probe for restore vs. cold start benchmarking.",
     "type": "gpu",
-    "labels": ["transformers", "llm", "inference", "large-model"]
+    "labels": [
+      "transformers",
+      "llm",
+      "inference",
+      "large-model"
+    ]
   },
   {
     "filename": "gpu/cuda-transformers-mistral-7b.yml",
     "title": "Mistral 7B Inference",
     "description": "Mistral-7B inference server with a readiness probe for restore vs. cold start benchmarking.",
     "type": "gpu",
-    "labels": ["transformers", "nlp", "inference", "mistral"]
+    "labels": [
+      "transformers",
+      "nlp",
+      "inference",
+      "mistral"
+    ]
   },
   {
     "filename": "gpu/cuda-transformers-stablelm.yml",
     "title": "StableLM Inference",
     "description": "StableLM 2-1.6B inference server with a readiness probe for restore vs. cold start benchmarking.",
     "type": "gpu",
-    "labels": ["transformers", "llm", "inference", "stablelm"]
+    "labels": [
+      "transformers",
+      "llm",
+      "inference",
+      "stablelm"
+    ]
   },
   {
     "filename": "gpu/cuda-vllm-llama-8b.yaml",
     "title": "vLLM Llama 3.1 8B Inference (Simple)",
     "description": "vLLM Llama 3.1 8B inference server with a readiness probe for restore vs. cold start benchmarking.",
     "type": "gpu",
-    "labels": ["vllm", "llm", "inference", "transformers"]
+    "labels": [
+      "vllm",
+      "llm",
+      "inference",
+      "transformers"
+    ]
   },
   {
     "filename": "gpu/cuda-vllm-llama-3.1-8b.yaml",
     "title": "vLLM Llama 3.1 8B Inference",
     "description": "vLLM Llama 3.1 8B inference server with persistent volume and readiness probe.",
     "type": "gpu",
-    "labels": ["vllm", "llm", "inference", "llama"]
-  },
-  {
-    "filename": "gpu/cuda-tensorflow.yaml",
-    "title": "Sample Tensorflow Training",
-    "description": "Trains a simple model using Tensorflow MirroredStrategy on single or multiple GPUs.",
-    "type": "gpu",
-    "labels": ["tensorflow", "training", "ml"]
+    "labels": [
+      "vllm",
+      "llm",
+      "inference",
+      "llama"
+    ]
   },
   {
     "filename": "gpu/cuda-deepspeed-train.yaml",
     "title": "Sample DeepSpeed Training",
     "description": "Trains a simple DeepSpeed model with FP16 and ZeRO optimization on a GPU.",
     "type": "gpu",
-    "labels": ["deepspeed", "training", "ml", "optimization"]
+    "labels": [
+      "deepspeed",
+      "training",
+      "ml",
+      "optimization"
+    ]
   },
   {
     "filename": "gpu/cuda-2xGPU-deepspeed-train.yaml",
     "title": "DeepSpeed 2-GPU Training",
     "description": "Trains a DeepSpeed model with FP16 and ZeRO optimization on 2 GPUs.",
     "type": "gpu",
-    "labels": ["deepspeed", "training", "ml", "optimization", "multigpu"]
+    "labels": [
+      "deepspeed",
+      "training",
+      "ml",
+      "optimization",
+      "multigpu"
+    ]
   },
   {
     "filename": "gpu/cuda-pytorch-cifar100.yaml",
     "title": "PyTorch CIFAR-100 Training",
     "description": "Trains a ResNet model on CIFAR-100 dataset using PyTorch on a GPU.",
     "type": "gpu",
-    "labels": ["pytorch", "training", "ml", "cifar"]
+    "labels": [
+      "pytorch",
+      "training",
+      "ml",
+      "cifar"
+    ]
   },
   {
     "filename": "gpu/cuda-4xGPU-pytorch-cifar100.yaml",
     "title": "PyTorch CIFAR-100 4-GPU Training",
     "description": "Trains a ResNet model on CIFAR-100 dataset using PyTorch on 4 GPUs.",
     "type": "gpu",
-    "labels": ["pytorch", "training", "ml", "cifar", "multigpu"]
+    "labels": [
+      "pytorch",
+      "training",
+      "ml",
+      "cifar",
+      "multigpu"
+    ]
   },
   {
     "filename": "gpu/cuda-llamafactory-lora-sft.yaml",
     "title": "LlamaFactory LoRA SFT Training",
     "description": "LoRA supervised fine-tuning of Llama 3 using LlamaFactory on a GPU.",
     "type": "gpu",
-    "labels": ["llm", "training", "ml", "llamafactory", "lora", "sft"]
+    "labels": [
+      "llm",
+      "training",
+      "ml",
+      "llamafactory",
+      "lora",
+      "sft"
+    ]
   },
   {
     "filename": "gpu/cuda-2xGPU-llamafactory-lora-sft.yaml",
@@ -180,118 +274,200 @@
     "title": "BindCraft Example",
     "description": "An open-source and automated pipeline for de novo protein binder design.",
     "type": "gpu",
-    "labels": ["bindcraft", "protein-design", "compbio"]
+    "labels": [
+      "bindcraft",
+      "protein-design",
+      "compbio"
+    ]
   },
   {
     "filename": "gpu/yuning.yaml",
     "title": "Caltech Virtual Tissue Model",
     "description": "Virtual Tissue Model deployment. Requires GPU for simulation.",
     "type": "gpu",
-    "labels": ["simulation", "biophysics", "compbio"]
+    "labels": [
+      "simulation",
+      "biophysics",
+      "compbio"
+    ]
   },
   {
     "filename": "gpu/gromacs-simple-example.yaml",
     "title": "GROMACS Molecular Dynamics Simulation (2ns)",
     "description": "Runs a simple GROMACS molecular dynamics simulation on a GPU.",
     "type": "gpu",
-    "labels": ["molecular-dynamics", "gromacs", "compbio"]
+    "labels": [
+      "molecular-dynamics",
+      "gromacs",
+      "compbio"
+    ]
   },
   {
     "filename": "gpu/gromacs-complex-example.yaml",
     "title": "GROMACS Molecular Dynamics Simulation (1000ns)",
     "description": "Runs a complex EM → NVT → NPT → production → RMSD/RMSF GROMACS simulation on a GPU.",
     "type": "gpu",
-    "labels": ["molecular-dynamics", "gromacs", "compbio"]
+    "labels": [
+      "molecular-dynamics",
+      "gromacs",
+      "compbio"
+    ]
   },
   {
     "filename": "gpu/openmm.yaml",
     "title": "OpenMM SimulatePdb",
     "description": "Runs an OpenMM molecular dynamics simulation (simulatePdb) on a GPU.",
     "type": "gpu",
-    "labels": ["molecular-dynamics", "openmm", "compbio"]
+    "labels": [
+      "molecular-dynamics",
+      "openmm",
+      "compbio"
+    ]
   },
   {
     "filename": "gpu/cuda-tensorflow-cifar100.yaml",
     "title": "TensorFlow CIFAR-100 Training",
     "description": "Trains a CNN model on CIFAR-100 dataset using TensorFlow on a single GPU.",
     "type": "gpu",
-    "labels": ["tensorflow", "training", "ml", "cifar"]
+    "labels": [
+      "tensorflow",
+      "training",
+      "ml",
+      "cifar"
+    ]
   },
   {
     "filename": "gpu/cuda-2xGPU-tensorflow-cifar100.yaml",
     "title": "TensorFlow CIFAR-100 2-GPU Training",
     "description": "Trains a CNN model on CIFAR-100 dataset using TensorFlow MirroredStrategy on 2 GPUs.",
     "type": "gpu",
-    "labels": ["tensorflow", "training", "ml", "cifar", "multigpu"]
+    "labels": [
+      "tensorflow",
+      "training",
+      "ml",
+      "cifar",
+      "multigpu"
+    ]
   },
   {
     "filename": "gpu/cuda-jupyter-notebook.yaml",
     "title": "Jupyter Notebook with GPU (PyTorch)",
     "description": "Jupyter Lab server with GPU support and PyTorch for interactive development.",
     "type": "gpu",
-    "labels": ["interactive", "jupyter", "data-science", "pytorch"]
+    "labels": [
+      "interactive",
+      "jupyter",
+      "data-science",
+      "pytorch"
+    ]
   },
   {
     "filename": "cpu/blast-sequence-alignment.yaml",
     "title": "BLAST Sequence Alignment",
     "description": "NCBI BLAST protein sequence alignment benchmark with SwissProt database.",
     "type": "cpu",
-    "labels": ["bioinformatics", "blast", "compbio", "benchmark"]
+    "labels": [
+      "bioinformatics",
+      "blast",
+      "compbio",
+      "benchmark"
+    ]
   },
   {
     "filename": "cpu/hpl-linpack.yaml",
     "title": "HPL LINPACK Benchmark",
     "description": "High Performance LINPACK benchmark using Intel MKL for dense linear algebra.",
     "type": "cpu",
-    "labels": ["benchmark", "linpack", "hpc", "linear-algebra"]
+    "labels": [
+      "benchmark",
+      "linpack",
+      "hpc",
+      "linear-algebra"
+    ]
   },
   {
     "filename": "cpu/intel-mkl-benchmarks.yaml",
     "title": "Intel MKL Benchmark Suite",
     "description": "Comprehensive Intel MKL benchmarks including DGEMM, LU, Cholesky, and FFT.",
     "type": "cpu",
-    "labels": ["benchmark", "mkl", "blas", "lapack", "fft"]
+    "labels": [
+      "benchmark",
+      "mkl",
+      "blas",
+      "lapack",
+      "fft"
+    ]
   },
   {
     "filename": "cpu/lammps-molecular-dynamics.yaml",
     "title": "LAMMPS Molecular Dynamics",
     "description": "LAMMPS molecular dynamics simulation of Lennard-Jones fluid system.",
     "type": "cpu",
-    "labels": ["molecular-dynamics", "lammps", "compbio", "simulation"]
+    "labels": [
+      "molecular-dynamics",
+      "lammps",
+      "compbio",
+      "simulation"
+    ]
   },
   {
     "filename": "cpu/monte-carlo-pi.yaml",
     "title": "Monte Carlo Pi Estimation",
     "description": "Monte Carlo simulation for estimating Pi using random sampling with stateful computation.",
     "type": "cpu",
-    "labels": ["monte-carlo", "simulation", "benchmark"]
+    "labels": [
+      "monte-carlo",
+      "simulation",
+      "benchmark"
+    ]
   },
   {
     "filename": "cpu/numpy-matrix-ops.yaml",
     "title": "NumPy/SciPy Matrix Operations",
     "description": "Comprehensive NumPy and SciPy matrix operations benchmark including DGEMM, LU, QR, SVD, and eigenvalue decomposition.",
     "type": "cpu",
-    "labels": ["numpy", "scipy", "linear-algebra", "benchmark"]
+    "labels": [
+      "numpy",
+      "scipy",
+      "linear-algebra",
+      "benchmark"
+    ]
   },
   {
     "filename": "cpu/password-hashing-benchmark.yaml",
     "title": "Password Hashing Benchmark",
     "description": "Memory-hard and CPU-intensive password hashing benchmark with Argon2, bcrypt, and scrypt.",
     "type": "cpu",
-    "labels": ["security", "cryptography", "benchmark", "argon2", "bcrypt"]
+    "labels": [
+      "security",
+      "cryptography",
+      "benchmark",
+      "argon2",
+      "bcrypt"
+    ]
   },
   {
     "filename": "cpu/sklearn-random-forest.yaml",
     "title": "Scikit-learn Random Forest Training",
     "description": "Trains Random Forest and Extra Trees models on large synthetic datasets using scikit-learn.",
     "type": "cpu",
-    "labels": ["sklearn", "random-forest", "ml", "training"]
+    "labels": [
+      "sklearn",
+      "random-forest",
+      "ml",
+      "training"
+    ]
   },
   {
     "filename": "cpu/xgboost-training.yaml",
     "title": "XGBoost CPU Training",
     "description": "Gradient boosting model training on synthetic datasets using XGBoost CPU backend.",
     "type": "cpu",
-    "labels": ["xgboost", "gradient-boosting", "ml", "training"]
+    "labels": [
+      "xgboost",
+      "gradient-boosting",
+      "ml",
+      "training"
+    ]
   }
 ]
