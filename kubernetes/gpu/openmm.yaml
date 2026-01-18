@@ -15,19 +15,7 @@ spec:
       env:
         - name: OPENMM_DEFAULT_PLATFORM
           value: CUDA
-        - name: OPENMM_CUDA_TEMP_DIR
-          value: /tmp/test_ptx
-        - name: CEDANA_PERSISTENT_MOUNTS
-          value: /tmp/out
       resources:
         limits:
           nvidia.com/gpu: 1
 
-      volumeMounts:
-      - name: host-tmp
-        mountPath: /tmp/test_ptx
-  volumes:
-    - name: host-tmp
-      hostPath:
-        path: /tmp/test_ptx
-        type: Directory
