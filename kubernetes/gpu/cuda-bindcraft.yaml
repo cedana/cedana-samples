@@ -9,7 +9,7 @@ spec:
   containers:
     - name: runner
       image: hammadtamarindbio/bindcraft-example:1.0.0
-      imagePullPolicy: Always
+      imagePullPolicy: IfNotPresent
       command: ["./run-bindcraft.sh"]
       env:
         - name: LD_LIBRARY_PATH

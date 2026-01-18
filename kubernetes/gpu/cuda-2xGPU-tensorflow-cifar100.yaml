@@ -141,7 +141,7 @@ spec:
     - name: PYTHONIOENCODING
       value: "utf-8"  
     image: nvcr.io/nvidia/tensorflow:25.02-tf2-py3
-    imagePullPolicy: Always
+    imagePullPolicy: IfNotPresent
     
     name: tensorflow-cifar100
     resources:

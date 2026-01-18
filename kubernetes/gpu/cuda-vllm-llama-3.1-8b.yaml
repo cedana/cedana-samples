@@ -27,7 +27,7 @@ spec:
           name: hf-token-secret
           key: HF_TOKEN
     image: nvcr.io/nvidia/tritonserver:25.06-vllm-python-py3
-    imagePullPolicy: Always
+    imagePullPolicy: IfNotPresent
     name: dgtest-vllm
     resources:
       limits:
