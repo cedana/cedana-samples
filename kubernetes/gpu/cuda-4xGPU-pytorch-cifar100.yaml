@@ -137,9 +137,13 @@ spec:
               transforms.ToTensor(),
               transforms.Normalize((0.5071, 0.4867, 0.4408), (0.2675, 0.2565, 0.2761))
           ])
-          
+          if dist.get_rank() == 0:
+            datasets.CIFAR100('/data/pytorch', train=True, download=True)
+          dist.barrier()
+
+
           # Use CIFAR100 dataset instead of MNIST
-          dataset1 = datasets.CIFAR100('/data/pytorch', train=True, download=True, transform=transform)
+          dataset1 = datasets.CIFAR100('/data/pytorch', train=True, transform=transform)
           dataset2 = datasets.CIFAR100('/data/pytorch', train=False, transform=transform)
           
           train_sampler = DistributedSampler(dataset1, num_replicas=args.world_size, rank=gpu)

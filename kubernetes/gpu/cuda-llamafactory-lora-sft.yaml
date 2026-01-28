@@ -21,6 +21,8 @@ spec:
       env:
         - name: DEPLOY_VALUE
           value: "4"
+        - name: CUDA_VISIBLE_DEVICES
+          value: "0"
         - name: HF_HOME
           value: "/data/huggingface"
         - name: HF_HUB_DISABLE_XET
