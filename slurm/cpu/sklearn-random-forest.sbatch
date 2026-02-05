@@ -13,8 +13,20 @@ echo "Starting Scikit-learn Random Forest workload on $(hostname)"
 echo "Job ID: $SLURM_JOB_ID"
 echo "Start time: $(date)"
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cd "${SCRIPT_DIR}/../.." || exit 1
+WORKSPACE_ROOT="$SLURM_SUBMIT_DIR"
+while [[ "$WORKSPACE_ROOT" != "/" ]]; do
+    if [[ -d "$WORKSPACE_ROOT/cpu_smr" ]]; then
+        break
+    fi
+    WORKSPACE_ROOT="$(dirname "$WORKSPACE_ROOT")"
+done
+
+if [[ ! -d "$WORKSPACE_ROOT/cpu_smr" ]]; then
+    echo "ERROR: Could not find workspace root (looking for cpu_smr directory)"
+    exit 1
+fi
+
+cd "$WORKSPACE_ROOT" || { echo "ERROR: Failed to cd to $WORKSPACE_ROOT"; exit 1; }
 
 echo "Installing dependencies..."
 pip install scikit-learn pandas numpy joblib --quiet

@@ -15,8 +15,20 @@ echo "Job ID: $SLURM_JOB_ID"
 echo "Start time: $(date)"
 echo "Allocated GPUs: $CUDA_VISIBLE_DEVICES"
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cd "${SCRIPT_DIR}/../.." || exit 1
+WORKSPACE_ROOT="$SLURM_SUBMIT_DIR"
+while [[ "$WORKSPACE_ROOT" != "/" ]]; do
+    if [[ -d "$WORKSPACE_ROOT/gpu_smr" ]]; then
+        break
+    fi
+    WORKSPACE_ROOT="$(dirname "$WORKSPACE_ROOT")"
+done
+
+if [[ ! -d "$WORKSPACE_ROOT/gpu_smr" ]]; then
+    echo "ERROR: Could not find workspace root"
+    exit 1
+fi
+
+cd "$WORKSPACE_ROOT" || exit 1
 
 if ! python3 -c "import torch" 2>/dev/null; then
     echo "PyTorch not found. Installing with CUDA support..."
