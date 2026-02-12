@@ -20,7 +20,7 @@ spec:
           image: python:3.11-slim
           resources:
             requests:
-              cpu: "2"
+              cpu: "1"
               memory: "2Gi"
             limits:
               cpu: "2"

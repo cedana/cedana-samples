@@ -10,8 +10,8 @@ spec:
     image: intel/oneapi-hpckit:2024.0.1-devel-ubuntu22.04
     resources:
       requests:
-        cpu: "4"
-        memory: "8Gi"
+        cpu: "1"
+        memory: "2Gi"
       limits:
         cpu: "4"
         memory: "8Gi"
