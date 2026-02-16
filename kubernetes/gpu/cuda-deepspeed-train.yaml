@@ -416,7 +416,7 @@ spec:
       pip3 install deepspeed
       
       # Run the training
-      deepspeed --num_gpus 1 /tmp/train_cifar100.py --epochs 30
+      deepspeed /tmp/train_cifar100.py --epochs 30
     env:
     - name: DEPLOY_VALUE
       value: "4"
