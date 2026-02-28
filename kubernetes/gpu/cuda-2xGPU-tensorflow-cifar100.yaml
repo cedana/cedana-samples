@@ -132,8 +132,10 @@ spec:
       EOF
 
       pip3 install -r /data/requirements.txt;
-      python3 /data/tf_cifar100.py --epochs 300 --data-dir /data/
+      python3 /data/tf_cifar100.py --epochs $NUM_EPOCHS --data-dir /data/
     env:
+    - name: NUM_EPOCHS
+      value: "300"
     - name: DEPLOY_VALUE
       value: "2"
     - name: PYTHONUNBUFFERED
