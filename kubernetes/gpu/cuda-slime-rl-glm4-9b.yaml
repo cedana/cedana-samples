@@ -1,0 +1,166 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  generateName: slime-glm4-
+  namespace: default
+spec:
+  runtimeClassName: cedana
+  restartPolicy: Never
+  containers:
+    - command:
+        - bash
+        - -c
+        - |
+          #!/bin/bash
+          set -ex
+
+          cd /root
+
+          # Clone SLIME if needed
+          if [ ! -d "slime" ]; then
+            git clone https://github.com/THUDM/slime.git
+          fi
+          cd slime
+          pip install -e . --no-deps
+
+          # Download model if needed
+          if [ ! -d "/data/models/GLM-Z1-9B-0414" ]; then
+            hf download zai-org/GLM-Z1-9B-0414 --local-dir /data/models/GLM-Z1-9B-0414
+          fi
+
+          # Download dataset if needed
+          if [ ! -d "/data/datasets/dapo-math-17k" ]; then
+            hf download --repo-type dataset zhuzilin/dapo-math-17k \
+              --local-dir /data/datasets/dapo-math-17k
+          fi
+
+          # Download eval dataset if needed
+          if [ ! -d "/data/datasets/aime-2024" ]; then
+            hf download --repo-type dataset zhuzilin/aime-2024 \
+              --local-dir /data/datasets/aime-2024
+          fi
+
+          # Convert model weights if needed
+          if [ ! -d "/data/models/GLM-Z1-9B-0414_torch_dist" ]; then
+            source scripts/models/glm4-9B.sh
+            PYTHONPATH=/root/Megatron-LM python tools/convert_hf_to_torch_dist.py \
+              ${MODEL_ARGS[@]} \
+              --hf-checkpoint /data/models/GLM-Z1-9B-0414 \
+              --save /data/models/GLM-Z1-9B-0414_torch_dist
+          fi
+
+          # Create directories
+          mkdir -p /data/checkpoints/slime-glm4
+          mkdir -p /data/logs/slime-glm4
+
+          # Load model configuration
+          source scripts/models/glm4-9B.sh
+
+          # Start Ray with 1 GPU (adapted from run-glm4-9B.sh for single GPU)
+          export MASTER_ADDR="127.0.0.1"
+          ray start --head --node-ip-address ${MASTER_ADDR} --num-gpus 1 \
+            --disable-usage-stats --dashboard-host=0.0.0.0 --dashboard-port=8265
+
+          # Submit training job (based on run-glm4-9B.sh, adapted for 1 GPU)
+          ray job submit --address="http://127.0.0.1:8265" \
+            --runtime-env-json='{
+              "env_vars": {
+                "PYTHONPATH": "/root/Megatron-LM/",
+                "CUDA_DEVICE_MAX_CONNECTIONS": "1"
+              }
+            }' \
+            -- python3 train.py \
+            --actor-num-nodes 1 \
+            --actor-num-gpus-per-node 1 \
+            --rollout-num-gpus 0 \
+            ${MODEL_ARGS[@]} \
+            --hf-checkpoint /data/models/GLM-Z1-9B-0414/ \
+            --ref-load /data/models/GLM-Z1-9B-0414_torch_dist \
+            --load /data/checkpoints/slime-glm4/ \
+            --save /data/checkpoints/slime-glm4/ \
+            --save-interval 20 \
+            --prompt-data /data/datasets/dapo-math-17k/dapo-math-17k.jsonl \
+            --input-key prompt \
+            --label-key label \
+            --apply-chat-template \
+            --rollout-shuffle \
+            --rm-type deepscaler \
+            --num-rollout 100 \
+            --rollout-batch-size 8 \
+            --n-samples-per-prompt 4 \
+            --rollout-max-response-len 2048 \
+            --rollout-temperature 1 \
+            --global-batch-size 32 \
+            --balance-data \
+            --eval-interval 20 \
+            --eval-prompt-data aime /data/datasets/aime-2024/aime-2024.jsonl \
+            --n-samples-per-eval-prompt 4 \
+            --eval-max-response-len 4096 \
+            --eval-top-p 1 \
+            --tensor-model-parallel-size 1 \
+            --pipeline-model-parallel-size 1 \
+            --use-dynamic-batch-size \
+            --max-tokens-per-gpu 2048 \
+            --advantage-estimator grpo \
+            --use-kl-loss \
+            --kl-loss-coef 0.00 \
+            --kl-loss-type low_var_kl \
+            --entropy-coef 0.00 \
+            --eps-clip 0.2 \
+            --eps-clip-high 0.28 \
+            --optimizer adam \
+            --lr 1e-6 \
+            --lr-decay-style constant \
+            --weight-decay 0.1 \
+            --adam-beta1 0.9 \
+            --adam-beta2 0.98 \
+            --rollout-num-gpus-per-engine 1 \
+            --attention-dropout 0.0 \
+            --hidden-dropout 0.0 \
+            --accumulate-allreduce-grads-in-fp32 \
+            --attention-softmax-in-fp32 \
+            --attention-backend flash
+
+          echo "Training job submitted. Streaming Ray logs..."
+          ray logs --follow
+      env:
+        - name: DEPLOY_VALUE
+          value: "4"
+        - name: PYTHONUNBUFFERED
+          value: "1"
+        - name: HF_HOME
+          value: "/data/huggingface"
+        - name: HF_HUB_DISABLE_XET
+          value: "1"
+        - name: CUDA_VISIBLE_DEVICES
+          value: "0"
+        - name: HF_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: hf-token-secret
+              key: HF_TOKEN
+      image: slimerl/slime:latest
+      imagePullPolicy: IfNotPresent
+      name: slime-glm4-train
+      resources:
+        limits:
+          nvidia.com/gpu: 1
+        requests:
+          nvidia.com/gpu: 1
+      volumeMounts:
+        - mountPath: /dev/shm
+          name: devshm
+        - mountPath: /data
+          name: data
+      securityContext:
+        capabilities:
+          add: ["IPC_LOCK"]
+
+  volumes:
+    - name: devshm
+      emptyDir:
+        sizeLimit: 200Gi
+        medium: Memory
+    - name: data
+      persistentVolumeClaim:
+        claimName: dgtest-pvc

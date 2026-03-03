@@ -1,0 +1,68 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  generateName: sd35-imagegen-
+  namespace: default
+spec:
+  runtimeClassName: cedana
+  containers:
+    - name: sd35-container
+      image: pytorch/pytorch:2.5.1-cuda12.4-cudnn9-runtime
+      command: ["/bin/bash", "-c"]
+      args:
+        - |
+          pip install diffusers transformers accelerate fastapi uvicorn;
+          python3 -c "
+          import torch
+          from diffusers import StableDiffusion35Pipeline
+          from fastapi import FastAPI
+          import uvicorn
+
+          app = FastAPI()
+          # Load model once at startup
+          pipe = StableDiffusion35Pipeline.from_pretrained('stabilityai/stable-diffusion-3.5-large', torch_dtype=torch.bfloat16)
+          pipe.to('cuda')
+          pipe.transformer = torch.compile(pipe.transformer)
+
+          @app.post('/generate')
+          async def gen(data: dict):
+              prompt = data.get('prompt', 'a cinematic photo of a robot')
+              image = pipe(prompt, num_inference_steps=20).images[0]
+              image.save('output.png')
+              return {'status': 'success', 'saved_as': 'output.png'}
+
+          uvicorn.run(app, host='0.0.0.0', port=8000)
+          "
+      ports:
+        - containerPort: 8000
+      env:
+        - name: HF_HOME
+          value: /data/huggingface
+        - name: HF_HUB_DISABLE_XET
+          value: "1"
+        - name: HF_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: hf-token-secret
+              key: HF_TOKEN
+      resources:
+        limits:
+          nvidia.com/gpu: 1
+        requests:
+          nvidia.com/gpu: 1
+      volumeMounts:
+        - mountPath: /dev/shm
+          name: devshm
+        - mountPath: /data
+          name: data
+      securityContext:
+        capabilities:
+          add: ["IPC_LOCK"]
+  volumes:
+    - name: devshm
+      emptyDir:
+        sizeLimit: 128Gi
+        medium: Memory
+    - name: data
+      persistentVolumeClaim:
+        claimName: dgtest-pvc

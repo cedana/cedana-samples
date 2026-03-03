@@ -1,0 +1,106 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  generateName: yolov8-coco-
+  namespace: default
+spec:
+  runtimeClassName: cedana
+  restartPolicy: Never
+  containers:
+  - command:
+    - bash
+    - -c
+    - |
+      #!/bin/bash
+      set -e
+
+      echo "Setting up YOLOv8 training environment..."
+
+      # Install ultralytics (YOLOv8)
+      pip install ultralytics==8.3.0
+
+      # Create directories
+      mkdir -p /data/yolov8/datasets
+      mkdir -p /data/yolov8/checkpoints
+      mkdir -p /scripts
+
+      # Create training script
+      cat > /scripts/train_yolov8.py << 'EOF'
+      from ultralytics import YOLO
+      import torch
+      import time
+      import os
+
+      print(f"PyTorch version: {torch.__version__}")
+      print(f"CUDA available: {torch.cuda.is_available()}")
+      print(f"CUDA version: {torch.version.cuda}")
+      if torch.cuda.is_available():
+          print(f"GPU: {torch.cuda.get_device_name(0)}")
+          print(f"GPU Memory: {torch.cuda.get_device_properties(0).total_memory / 1024**3:.2f} GB")
+
+      # Load a pretrained YOLOv8 model (yolov8n = nano, smallest/fastest)
+      # This will download the model on first run
+      model = YOLO('yolov8n.pt')
+
+      print("\nStarting YOLOv8 training on COCO dataset...")
+      print("Training for 300 epochs to demonstrate long-running checkpoint/restore")
+      print("Checkpoints will be saved every 10 epochs")
+
+      # Train the model on COCO dataset
+      # This will auto-download COCO on first run
+      results = model.train(
+          data='coco.yaml',          # COCO dataset configuration
+          epochs=300,                # Long training for checkpoint/restore demo
+          imgsz=640,                 # Image size
+          batch=16,                  # Batch size (adjust based on GPU memory)
+          device=0,                  # GPU device
+          project='/data/yolov8/checkpoints',  # Save location
+          name='coco-train',         # Experiment name
+          save=True,                 # Save checkpoints
+          save_period=10,            # Save checkpoint every 10 epochs
+          patience=0,                # No early stopping
+          cache=False,               # Don't cache images (saves disk space)
+          workers=4,                 # Data loading workers
+          verbose=True,              # Verbose output
+          plots=True,                # Generate training plots
+          exist_ok=True,             # Overwrite existing project
+      )
+
+      print("\nTraining complete!")
+      print(f"Best model saved to: {results.save_dir}")
+      EOF
+
+      # Run training
+      echo "Starting YOLOv8 COCO training..."
+      python3 /scripts/train_yolov8.py
+    env:
+    - name: DEPLOY_VALUE
+      value: "4"
+    - name: PYTHONUNBUFFERED
+      value: "1"
+    - name: PYTHONIOENCODING
+      value: "utf-8"
+    image: nvcr.io/nvidia/pytorch:25.03-py3
+    imagePullPolicy: IfNotPresent
+    name: yolov8-train
+    resources:
+      limits:
+        nvidia.com/gpu: 1
+      requests:
+        nvidia.com/gpu: 1
+    volumeMounts:
+    - mountPath: /dev/shm
+      name: devshm
+    - mountPath: /data
+      name: data
+    securityContext:
+      capabilities:
+        add: ["IPC_LOCK"]
+  volumes:
+  - name: devshm
+    emptyDir:
+      sizeLimit: 200Gi
+      medium: Memory
+  - name: data
+    persistentVolumeClaim:
+      claimName: dgtest-pvc

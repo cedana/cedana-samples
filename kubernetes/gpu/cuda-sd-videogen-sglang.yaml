@@ -1,0 +1,70 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  generateName: svd-videogen-
+  namespace: default
+spec:
+  runtimeClassName: cedana
+  containers:
+    - name: svd-container
+      image: pytorch/pytorch:2.5.1-cuda12.4-cudnn9-runtime
+      command: ["/bin/bash", "-c"]
+      args:
+        - |
+          pip install diffusers transformers accelerate fastapi uvicorn pillow;
+          python3 -c "
+          import torch
+          from diffusers import StableVideoDiffusionPipeline
+          from fastapi import FastAPI, File, UploadFile
+          from PIL import Image
+          import uvicorn
+          import io
+
+          app = FastAPI()
+          # Load model once at startup
+          pipe = StableVideoDiffusionPipeline.from_pretrained('stabilityai/stable-video-diffusion-img2vid-xt-1-1', torch_dtype=torch.bfloat16)
+          pipe.to('cuda')
+
+          @app.post('/generate')
+          async def gen(file: UploadFile = File(...)):
+              image_data = await file.read()
+              image = Image.open(io.BytesIO(image_data))
+              frames = pipe(image, num_frames=25).frames[0]
+              # Save frames as video or return
+              return {'status': 'success', 'num_frames': len(frames)}
+
+          uvicorn.run(app, host='0.0.0.0', port=8000)
+          "
+      ports:
+        - containerPort: 8000
+      env:
+        - name: HF_HOME
+          value: /data/huggingface
+        - name: HF_HUB_DISABLE_XET
+          value: "1"
+        - name: HF_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: hf-token-secret
+              key: HF_TOKEN
+      resources:
+        limits:
+          nvidia.com/gpu: 1
+        requests:
+          nvidia.com/gpu: 1
+      volumeMounts:
+        - mountPath: /dev/shm
+          name: devshm
+        - mountPath: /data
+          name: data
+      securityContext:
+        capabilities:
+          add: ["IPC_LOCK"]
+  volumes:
+    - name: devshm
+      emptyDir:
+        sizeLimit: 128Gi
+        medium: Memory
+    - name: data
+      persistentVolumeClaim:
+        claimName: dgtest-pvc

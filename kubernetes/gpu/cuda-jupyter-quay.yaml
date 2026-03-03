@@ -1,0 +1,61 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: jupyter-pod
+  namespace: default
+  labels:
+    app: jupyter
+spec:
+  runtimeClassName: cedana
+  containers:
+  - name: jupyter-container
+    image: quay.io/jupyter/pytorch-notebook:latest
+    imagePullPolicy: Always
+    ports:
+    - containerPort: 8888
+    env:
+    - name: JUPYTER_TOKEN
+      value: "mypassword"
+    - name: HF_HOME
+      value: /data/huggingface
+    - name: HF_HUB_DISABLE_XET
+      value: "1"
+    - name: HF_TOKEN
+      valueFrom:
+        secretKeyRef:
+          name: hf-token-secret
+          key: HF_TOKEN
+    command: ["start-notebook.py"]
+    args:
+      - "--ip=0.0.0.0"
+      - "--port=8888"
+      - "--no-browser"
+      - "--allow-root"
+      - "--ServerApp.token="
+      - "--ServerApp.password="
+      - "--ServerApp.allow_origin=*"
+      - "--NotebookNotary.db_file=:memory:"
+      - "--HistoryManager.enabled=False"
+      - "--ServerApp.disable_check_xsrf=True"
+      - "--ServerApp.tornado_settings={'headers':{'Content-Security-Policy':'frame-ancestors *','X-Frame-Options':'ALLOWALL'}}"
+    resources:
+      limits:
+        nvidia.com/gpu: 1
+      requests:
+        nvidia.com/gpu: 1
+    volumeMounts:
+      - mountPath: /dev/shm
+        name: devshm
+      - mountPath: /data
+        name: data
+    securityContext:
+      capabilities:
+        add: ["IPC_LOCK"]
+  volumes:
+    - name: devshm
+      emptyDir:
+        sizeLimit: 128Gi
+        medium: Memory
+    - name: data
+      persistentVolumeClaim:
+        claimName: dgtest-pvc

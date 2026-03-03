@@ -1,20 +1,24 @@
 apiVersion: v1
 kind: Pod
 metadata:
-  generateName: vllm-llama-3-1-8b-
+  generateName: whisper-v3-
   namespace: default
 spec:
   runtimeClassName: cedana
-  restartPolicy: Never
   containers:
-    - name: vllm-llama-8b
-      image: nvcr.io/nvidia/tritonserver:25.06-vllm-python-py3
-      imagePullPolicy: IfNotPresent
+    - name: whisper-sglang
+      image: lmsysorg/sglang:latest
+      imagePullPolicy: Always
       command:
-        - bash
-        - -c
-        - |
-          vllm serve meta-llama/Llama-3.1-8B --port 8000;
+        - python3
+        - -m
+        - sglang.launch_server
+        - --model-path
+        - openai/whisper-large-v3
+        - --host
+        - 0.0.0.0
+        - --port
+        - "8000"
       env:
         - name: HF_HOME
           value: /data/huggingface
@@ -40,16 +44,10 @@ spec:
           add: ["IPC_LOCK"]
       ports:
         - containerPort: 8000
-      readinessProbe:
-        tcpSocket:
-          port: 8000
-        initialDelaySeconds: 1
-        periodSeconds: 1
-        timeoutSeconds: 1
   volumes:
     - name: devshm
       emptyDir:
-        sizeLimit: 200Gi
+        sizeLimit: 128Gi
         medium: Memory
     - name: data
       persistentVolumeClaim:
