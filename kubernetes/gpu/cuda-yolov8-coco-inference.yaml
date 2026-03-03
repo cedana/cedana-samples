@@ -1,0 +1,157 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  generateName: yolov8-inference-
+  namespace: default
+spec:
+  runtimeClassName: cedana
+  restartPolicy: Never
+  containers:
+  - command:
+    - bash
+    - -c
+    - |
+      #!/bin/bash
+      set -e
+
+      echo "Setting up YOLOv8 inference environment..."
+
+      # Install ultralytics (YOLOv8)
+      pip install ultralytics==8.3.0
+
+      # Create directories
+      mkdir -p /data/yolov8/inference
+      mkdir -p /data/yolov8/results
+      mkdir -p /scripts
+
+      # Create continuous inference script
+      cat > /scripts/inference_yolov8.py << 'EOF'
+      from ultralytics import YOLO
+      import torch
+      import time
+      import os
+      from pathlib import Path
+      import cv2
+      import numpy as np
+
+      print(f"PyTorch version: {torch.__version__}")
+      print(f"CUDA available: {torch.cuda.is_available()}")
+      if torch.cuda.is_available():
+          print(f"GPU: {torch.cuda.get_device_name(0)}")
+          print(f"GPU Memory: {torch.cuda.get_device_properties(0).total_memory / 1024**3:.2f} GB")
+
+      # Load a pretrained YOLOv8 model
+      print("\nLoading YOLOv8n model...")
+      model = YOLO('yolov8n.pt')
+      model.to('cuda')
+
+      # Download sample COCO val images if not present
+      print("Setting up inference dataset...")
+      val_dir = Path('/data/yolov8/inference/val2017')
+      if not val_dir.exists():
+          print("Downloading COCO validation images (first run only)...")
+          from ultralytics.data.utils import download
+          download('https://ultralytics.com/assets/coco128.zip', dir='/data/yolov8/inference')
+          # This will create a coco128 folder with sample images
+          val_dir = Path('/data/yolov8/inference/coco128/images/train2017')
+
+      # Get list of images
+      image_files = list(val_dir.glob('*.jpg')) + list(val_dir.glob('*.png'))
+      if not image_files:
+          # Fallback: generate synthetic images for inference
+          print("No images found, generating synthetic test images...")
+          val_dir.mkdir(parents=True, exist_ok=True)
+          for i in range(100):
+              img = np.random.randint(0, 255, (640, 640, 3), dtype=np.uint8)
+              cv2.imwrite(str(val_dir / f'synthetic_{i:04d}.jpg'), img)
+          image_files = list(val_dir.glob('*.jpg'))
+
+      print(f"Found {len(image_files)} images for inference")
+
+      # Continuous inference loop
+      results_dir = Path('/data/yolov8/results')
+      results_dir.mkdir(parents=True, exist_ok=True)
+
+      print("\nStarting continuous YOLOv8 inference...")
+      print("Running indefinitely for checkpoint/restore demo")
+      print("Processing images in batches with 1 second delay between batches")
+
+      iteration = 0
+      batch_size = 16
+      total_inferences = 0
+      start_time = time.time()
+
+      while True:
+          iteration += 1
+          batch_start_time = time.time()
+
+          # Process a batch of images
+          batch_images = []
+          for i in range(batch_size):
+              img_idx = (total_inferences + i) % len(image_files)
+              batch_images.append(str(image_files[img_idx]))
+
+          # Run inference
+          results = model(batch_images, verbose=False, device=0)
+
+          # Count detections
+          total_detections = sum(len(r.boxes) for r in results)
+
+          batch_time = time.time() - batch_start_time
+          total_inferences += batch_size
+          elapsed = time.time() - start_time
+          fps = total_inferences / elapsed if elapsed > 0 else 0
+
+          print(f"[Iteration {iteration:06d}] "
+                f"Processed {batch_size} images in {batch_time:.3f}s | "
+                f"Detections: {total_detections} | "
+                f"Total: {total_inferences} images | "
+                f"Avg FPS: {fps:.2f}")
+
+          # Save results periodically
+          if iteration % 10 == 0:
+              # Save one annotated image as example
+              result = results[0]
+              save_path = results_dir / f'result_iter_{iteration:06d}.jpg'
+              result.save(str(save_path))
+              print(f"  └─ Saved example result to {save_path}")
+
+          # Small delay to make it easier to checkpoint
+          time.sleep(1)
+
+      EOF
+
+      # Run inference
+      echo "Starting YOLOv8 continuous inference..."
+      python3 /scripts/inference_yolov8.py
+    env:
+    - name: DEPLOY_VALUE
+      value: "4"
+    - name: PYTHONUNBUFFERED
+      value: "1"
+    - name: PYTHONIOENCODING
+      value: "utf-8"
+    image: nvcr.io/nvidia/pytorch:25.03-py3
+    imagePullPolicy: IfNotPresent
+    name: yolov8-inference
+    resources:
+      limits:
+        nvidia.com/gpu: 1
+      requests:
+        nvidia.com/gpu: 1
+    volumeMounts:
+    - mountPath: /dev/shm
+      name: devshm
+    - mountPath: /data
+      name: data
+    securityContext:
+      capabilities:
+        add: ["IPC_LOCK"]
+  volumes:
+  - name: devshm
+    emptyDir:
+      sizeLimit: 200Gi
+      medium: Memory
+  - name: data
+    persistentVolumeClaim:
+      claimName: dgtest-pvc

@@ -42,21 +42,21 @@ spec:
           nvidia.com/gpu: 1
         requests:
           nvidia.com/gpu: 1
-
       volumeMounts:
         - mountPath: /dev/shm
           name: devshm
-
+        - mountPath: /data
+          name: data
       securityContext:
         capabilities:
           add: ["IPC_LOCK"]
-
       ports:
-        - containerPort: 8888
-
+        - containerPort: 8000
   volumes:
     - name: devshm
       emptyDir:
         sizeLimit: 200Gi
         medium: Memory
-        
+    - name: data
+      persistentVolumeClaim:
+        claimName: dgtest-pvc
