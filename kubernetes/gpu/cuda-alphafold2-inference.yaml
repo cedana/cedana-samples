@@ -1,0 +1,213 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  generateName: alphafold2-
+  namespace: default
+spec:
+  runtimeClassName: cedana
+  restartPolicy: Never
+  containers:
+  - command:
+    - bash
+    - -c
+    - |
+      #!/bin/bash
+      set -e
+
+      echo "Setting up AlphaFold2 inference environment..."
+
+      # Install Python and pip
+      apt-get update
+      apt-get install -y python3 python3-pip git wget
+
+      # Install JAX with CUDA 12 support first
+      pip3 install --upgrade "jax[cuda12]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+
+      # Install ColabFold with alphafold support
+      pip3 install "colabfold[alphafold]@git+https://github.com/sokrypton/ColabFold"
+
+      # Set up model weights cache on persistent storage
+      # ColabFold uses XDG_CACHE_HOME or ~/.cache
+      mkdir -p /data/alphafold2/cache
+      export XDG_CACHE_HOME=/data/alphafold2/cache
+
+      # Download model weights if not present
+      if [ ! -d "/data/alphafold2/cache/colabfold" ]; then
+        echo "Downloading AlphaFold2 model weights (first run only, ~3.5GB)..."
+        python3 -m colabfold.download
+        echo "Weights downloaded to /data/alphafold2/cache/colabfold"
+      else
+        echo "AlphaFold2 model weights already cached at /data/alphafold2/cache/colabfold"
+      fi
+
+      # Create directories
+      mkdir -p /data/alphafold2/inputs
+      mkdir -p /data/alphafold2/outputs
+      mkdir -p /scripts
+
+      # Create input FASTA file with real protein sequences
+      cat > /data/alphafold2/inputs/proteins.fasta << 'FASTA'
+      >insulin
+      MALWMRLLPLLALLALWGPDPAAAFVNQHLCGSHLVEALYLVCGERGFFYTPKTRREAEDLQVGQVELGGGPGAGSLQPLALEGSLQKRGIVEQCCTSICSLYQLENYCN
+      >lysozyme
+      MKALIVLGLVLLSVTVQGKVFERCELARTLKRLGMDGYRGISLANWMCLAKWESGYNTRATNYNAGDRSTDYGIFQINSRYWCNDGKTPGAVNACHLSCSALLQDNIADAVACAKRVVRDPQGIRAWVAWRNRCQNRDVRQYVQGCGV
+      >gfp
+      MSKGEELFTGVVPILVELDGDVNGHKFSVSGEGEGDATYGKLTLKFICTTGKLPVPWPTLVTTFSYGVQCFSRYPDHMKQHDFFKSAMPEGYVQERTIFFKDDGNYKTRAEVKFEGDTLVNRIELKGIDFKEDGNILGHKLEYNYNSHNVYIMADKQKNGIKVNFKIRHNIEDGSVQLADHYQQNTPIGDGPVLLPDNHYLSTQSALSKDPNEKRDHMVLLEFVTAAGITHGMDELYK
+      >hemoglobin_alpha
+      MVLSPADKTNVKAAWGKVGAHAGEYGAEALERMFLSFPTTKTYFPHFDLSHGSAQVKGHGKKVADALTNAVAHVDDMPNALSALSDLHAHKLRVDPVNFKLLSHCLLVTLAAHLPAEFTPAVHASLDKFLASVSTVLTSKYR
+      >ubiquitin
+      MQIFVKTLTGKTITLEVEPSDTIENVKAKIQDKEGIPPDQQRLIFAGKQLEDGRTLSDYNIQKESTLHLVLRLRGG
+      FASTA
+
+      # Create continuous inference script
+      cat > /scripts/run_alphafold2.py << 'EOF'
+      import os
+      import time
+      import json
+      from pathlib import Path
+      from Bio import SeqIO
+      import jax
+
+      print(f"JAX version: {jax.__version__}")
+      print(f"JAX devices: {jax.devices()}")
+      if jax.devices()[0].platform == 'gpu':
+          print(f"GPU: {jax.devices()[0].device_kind}")
+      print(f"Number of devices: {jax.device_count()}")
+
+      # Set environment for AlphaFold2
+      os.environ['TF_FORCE_UNIFIED_MEMORY'] = '1'
+      os.environ['XLA_PYTHON_CLIENT_PREALLOCATE'] = 'false'
+      os.environ['XDG_CACHE_HOME'] = '/data/alphafold2/cache'
+
+      # Import ColabFold
+      from colabfold.batch import get_queries, run
+      from colabfold.download import default_data_dir
+
+      # Read protein sequences
+      fasta_file = Path('/data/alphafold2/inputs/proteins.fasta')
+      sequences = list(SeqIO.parse(fasta_file, 'fasta'))
+
+      print(f"\nLoaded {len(sequences)} protein sequences:")
+      for seq in sequences:
+          print(f"  - {seq.id}: {len(seq.seq)} residues")
+
+      results_dir = Path('/data/alphafold2/outputs')
+      results_dir.mkdir(parents=True, exist_ok=True)
+
+      print("\nStarting continuous AlphaFold2 inference...")
+      print("Running indefinitely for checkpoint/restore demo")
+      print("Each prediction runs 5 recycles of the AlphaFold2 model\n")
+
+      iteration = 0
+      total_predictions = 0
+      start_time = time.time()
+
+      while True:
+          iteration += 1
+
+          # Select a protein to predict
+          protein_idx = total_predictions % len(sequences)
+          protein = sequences[protein_idx]
+          protein_name = protein.id
+          sequence = str(protein.seq)
+          seq_length = len(sequence)
+
+          print(f"[Iteration {iteration:06d}] Predicting structure for {protein_name} ({seq_length} residues)...")
+
+          pred_start_time = time.time()
+
+          try:
+              # Create output directory for this prediction
+              output_dir = results_dir / f'iter_{iteration:06d}_{protein_name}'
+              output_dir.mkdir(exist_ok=True)
+
+              # Write sequence to temporary FASTA
+              temp_fasta = output_dir / 'input.fasta'
+              with open(temp_fasta, 'w') as f:
+                  f.write(f'>{protein_name}\n{sequence}\n')
+
+              # Run AlphaFold2 prediction
+              queries, is_complex = get_queries(temp_fasta)
+              run(
+                  queries=queries,
+                  result_dir=str(output_dir),
+                  is_complex=is_complex,
+                  use_templates=False,
+                  num_relax=0,
+                  num_recycles=3,
+                  model_type='alphafold2_ptm',
+                  num_models=1,
+                  rank_by='plddt',
+                  stop_at_score=100,
+              )
+
+              pred_time = time.time() - pred_start_time
+              total_predictions += 1
+              elapsed = time.time() - start_time
+
+              # Read pLDDT score from results
+              plddt = "N/A"
+              for json_file in output_dir.glob('*scores*.json'):
+                  with open(json_file) as f:
+                      scores = json.load(f)
+                      plddt = scores.get('plddt', 'N/A')
+                      break
+
+              print(f"  └─ Completed in {pred_time:.1f}s | pLDDT: {plddt}")
+              print(f"  └─ Total predictions: {total_predictions} | "
+                    f"Elapsed: {elapsed/60:.1f} min | "
+                    f"Avg: {elapsed/total_predictions:.1f}s per protein")
+              print(f"  └─ Results saved to {output_dir.name}/\n")
+
+          except Exception as e:
+              print(f"  └─ Error during prediction: {e}\n")
+
+          # Small delay between predictions
+          time.sleep(2)
+
+      EOF
+
+      # Run AlphaFold2 inference
+      echo "Starting AlphaFold2 continuous inference..."
+      python3 /scripts/run_alphafold2.py
+    env:
+    - name: DEPLOY_VALUE
+      value: "4"
+    - name: PYTHONUNBUFFERED
+      value: "1"
+    - name: PYTHONIOENCODING
+      value: "utf-8"
+    - name: TF_FORCE_UNIFIED_MEMORY
+      value: "1"
+    - name: XLA_PYTHON_CLIENT_PREALLOCATE
+      value: "false"
+    - name: JAX_PLATFORMS
+      value: "cuda"
+    - name: XDG_CACHE_HOME
+      value: "/data/alphafold2/cache"
+    image: nvidia/cuda:12.1.0-cudnn8-devel-ubuntu22.04
+    imagePullPolicy: IfNotPresent
+    name: alphafold2-inference
+    resources:
+      limits:
+        nvidia.com/gpu: 1
+        memory: 32Gi
+      requests:
+        nvidia.com/gpu: 1
+        memory: 16Gi
+    volumeMounts:
+    - mountPath: /dev/shm
+      name: devshm
+    - mountPath: /data
+      name: data
+    securityContext:
+      capabilities:
+        add: ["IPC_LOCK"]
+  volumes:
+  - name: devshm
+    emptyDir:
+      sizeLimit: 200Gi
+      medium: Memory
+  - name: data
+    persistentVolumeClaim:
+      claimName: dgtest-pvc
