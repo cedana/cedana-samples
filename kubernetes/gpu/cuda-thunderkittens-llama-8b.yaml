@@ -1,0 +1,99 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  generateName: thunderkittens-llama-8b-
+  namespace: default
+spec:
+  runtimeClassName: cedana 
+  restartPolicy: Never
+  containers:
+    - name: thunderkittens-demo
+      image: nvcr.io/nvidia/pytorch:25.03-py3
+      imagePullPolicy: IfNotPresent
+      command:
+        - bash
+        - -c
+        - |
+          # Clone ThunderKittens repository
+          git clone --depth 1 https://github.com/HazyResearch/ThunderKittens.git
+          cd ThunderKittens
+
+          # Compile the MHA H100 kernel required for the demo
+          cd kernels/attention/mha_h100
+          make
+          cd ../../..
+
+          # Install Python dependencies
+          cd demos
+          export PIP_CONSTRAINT=""
+          pip install -r requirements.txt
+
+          # Update model config to use PVC for model cache instead of /scratch
+          sed -i 's|cache_dir: /scratch/|cache_dir: /data/huggingface|g' configs/llama_3.1_8b_model_config.yaml
+
+          # Run the Llama 8B demo with infinite looping prompts
+          cd llama
+
+          # Create a script that feeds prompts infinitely
+          cat > prompt_loop.sh <<'SCRIPT'
+          #!/bin/bash
+          prompts=(
+            "Tell me about machine learning."
+            "What is ThunderKittens?"
+            "Explain attention mechanisms in transformers."
+            "What are CUDA kernels?"
+            "How do GPUs accelerate deep learning?"
+            "Explain the transformer architecture."
+            "What is multi-head attention?"
+            "Tell me about H100 GPUs."
+          )
+
+          while true; do
+            for prompt in "${prompts[@]}"; do
+              echo "$prompt"
+            done
+          done
+          SCRIPT
+
+          chmod +x prompt_loop.sh
+          ./prompt_loop.sh | python -Wignore demo_llama_hf.py \
+            --model_config_path ../configs/llama_3.1_8b_model_config.yaml \
+            --num_generations 1 \
+            --max_new_tokens 50 \
+            --model_type tk_attention
+      env:
+        - name: CUDA_VISIBLE_DEVICES
+          value: "0"
+        - name: HF_HOME
+          value: /data/huggingface
+        - name: HF_HUB_DISABLE_XET
+          value: "1"
+        - name: HF_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: hf-token-secret
+              key: HF_TOKEN
+        # Suppress Python warnings as per demo script
+        - name: PYTHONWARNINGS
+          value: "ignore"
+      resources:
+        limits:
+          nvidia.com/gpu: 1
+        requests:
+          nvidia.com/gpu: 1
+      volumeMounts:
+        - mountPath: /data
+          name: data
+        - mountPath: /dev/shm
+          name: devshm
+      securityContext:
+        capabilities:
+          add: ["IPC_LOCK"]
+  volumes:
+    - name: data
+      persistentVolumeClaim:
+        claimName: dgtest-pvc
+    - name: devshm
+      emptyDir:
+        sizeLimit: 32Gi
+        medium: Memory
