@@ -76,7 +76,7 @@
   },
   {
     "filename": "gpu/cuda-2xGPU-vector-add.yaml",
-    "title": "CUDA Vector Addition",
+    "title": "CUDA Vector Addition (Multi-GPU)",
     "description": "Runs CUDA vector addition to test multi-GPU checkpoint and restore.",
     "type": "gpu",
     "labels": [
@@ -399,26 +399,27 @@
     ]
   },
   {
-    "filename": "cpu/lammps-molecular-dynamics.yaml",
-    "title": "LAMMPS Molecular Dynamics",
-    "description": "LAMMPS molecular dynamics simulation of Lennard-Jones fluid system.",
+    "filename": "cpu/lammps-lennard-jones-benchmark.yaml",
+    "title": "LAMMPS Lennard-Jones Benchmark",
+    "description": "Runs a LAMMPS Lennard-Jones fluid benchmark to evaluate molecular dynamics performance and checkpoint/restore behavior.",
+    "type": "cpu",
+    "labels": [
+      "molecular-dynamics",
+      "lammps",
+      "benchmark",
+      "simulation"
+    ]
+  },
+  {
+    "filename": "cpu/lammps-rhodospin-md.yaml",
+    "title": "LAMMPS Rhodospin Molecular Dynamics",
+    "description": "Performs a LAMMPS molecular dynamics simulation of a rhodopsin system for computational biology testing.",
     "type": "cpu",
     "labels": [
       "molecular-dynamics",
       "lammps",
       "compbio",
       "simulation"
-    ]
-  },
-  {
-    "filename": "cpu/monte-carlo-pi.yaml",
-    "title": "Monte Carlo Pi Estimation",
-    "description": "Monte Carlo simulation for estimating Pi using random sampling with stateful computation.",
-    "type": "cpu",
-    "labels": [
-      "monte-carlo",
-      "simulation",
-      "benchmark"
     ]
   },
   {
@@ -467,6 +468,116 @@
       "xgboost",
       "gradient-boosting",
       "ml",
+      "training"
+    ]
+  },
+  {
+    "filename": "kubernetes/gpu/cuda-alphafold2-inference.yaml",
+    "title": "AlphaFold2 Inference",
+    "description": "Runs AlphaFold2 inference on GPU for protein structure prediction workloads.",
+    "type": "gpu",
+    "labels": [
+      "alphafold",
+      "inference",
+      "bioinformatics"
+    ]
+  },
+  {
+    "filename": "kubernetes/gpu/cuda-jupyter-quay.yaml",
+    "title": "CUDA Jupyter Notebook",
+    "description": "Launches a GPU-enabled Jupyter Notebook environment for interactive experimentation.",
+    "type": "gpu",
+    "labels": [
+      "jupyter",
+      "interactive",
+      "notebook"
+    ]
+  },
+  {
+    "filename": "kubernetes/gpu/cuda-sd-imagegen-sglang.yaml",
+    "title": "Stable Diffusion Image Generation (SGLang)",
+    "description": "Generates images using Stable Diffusion with SGLang backend on GPU.",
+    "type": "gpu",
+    "labels": [
+      "stable-diffusion",
+      "image-generation",
+      "sglang"
+    ]
+  },
+  {
+    "filename": "kubernetes/gpu/cuda-sd-imagegen-transformers.yaml",
+    "title": "Stable Diffusion Image Generation (Transformers)",
+    "description": "Runs Stable Diffusion image generation using Hugging Face Transformers on GPU.",
+    "type": "gpu",
+    "labels": [
+      "stable-diffusion",
+      "image-generation",
+      "transformers"
+    ]
+  },
+  {
+    "filename": "kubernetes/gpu/cuda-sd-imagegen-vllm.yaml",
+    "title": "Stable Diffusion Image Generation (vLLM)",
+    "description": "Performs GPU-based image generation using Stable Diffusion integrated with vLLM.",
+    "type": "gpu",
+    "labels": [
+      "stable-diffusion",
+      "image-generation",
+      "vllm"
+    ]
+  },
+  {
+    "filename": "kubernetes/gpu/cuda-sd-videogen-sglang.yaml",
+    "title": "Stable Diffusion Video Generation (SGLang)",
+    "description": "Generates videos from diffusion models using SGLang on GPU.",
+    "type": "gpu",
+    "labels": [
+      "stable-diffusion",
+      "video-generation",
+      "sglang"
+    ]
+  },
+  {
+    "filename": "kubernetes/gpu/cuda-slime-rl-glm4-9b.yaml",
+    "title": "SLIME RL GLM4 9B",
+    "description": "Runs reinforcement learning fine-tuning using GLM4 9B model on GPU.",
+    "type": "gpu",
+    "labels": [
+      "reinforcement-learning",
+      "glm4",
+      "training"
+    ]
+  },
+  {
+    "filename": "kubernetes/gpu/cuda-whisper-v3.yaml",
+    "title": "Whisper v3 Inference",
+    "description": "Performs speech-to-text transcription using Whisper v3 on GPU.",
+    "type": "gpu",
+    "labels": [
+      "whisper",
+      "speech-to-text",
+      "inference"
+    ]
+  },
+  {
+    "filename": "kubernetes/gpu/cuda-yolov8-coco-inference.yaml",
+    "title": "YOLOv8 COCO Inference",
+    "description": "Runs YOLOv8 object detection inference on the COCO dataset using GPU.",
+    "type": "gpu",
+    "labels": [
+      "yolov8",
+      "object-detection",
+      "inference"
+    ]
+  },
+  {
+    "filename": "kubernetes/gpu/cuda-yolov8-coco-train.yaml",
+    "title": "YOLOv8 COCO Training",
+    "description": "Trains YOLOv8 object detection model on the COCO dataset with GPU acceleration.",
+    "type": "gpu",
+    "labels": [
+      "yolov8",
+      "object-detection",
       "training"
     ]
   }
