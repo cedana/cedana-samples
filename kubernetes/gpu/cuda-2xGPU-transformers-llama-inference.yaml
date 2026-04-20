@@ -1,0 +1,117 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  generateName: transformers-llama-inf-
+  namespace: default
+spec:
+  runtimeClassName: cedana
+  restartPolicy: Never
+  containers:
+    - name: transformers-llama-inference
+      image: pytorch/pytorch:2.6.0-cuda12.4-cudnn9-runtime
+      command: ["/bin/bash", "-c"]
+      args:
+        - |
+          pip install transformers accelerate fastapi uvicorn torch;
+          python3 -c "
+          import torch
+          from transformers import AutoModelForCausalLM, AutoTokenizer
+          from accelerate import init_empty_weights, load_checkpoint_and_dispatch
+          from fastapi import FastAPI
+          import uvicorn
+          import os
+
+          app = FastAPI()
+
+          # Model configuration
+          model_name = 'meta-llama/Llama-2-13b-chat-hf'
+
+          print('Loading tokenizer...')
+          tokenizer = AutoTokenizer.from_pretrained(
+              model_name,
+              cache_dir='/data/huggingface',
+              token=os.environ.get('HF_TOKEN')
+          )
+
+          print('Loading model with multi-GPU support...')
+          # Load model with device_map='auto' for automatic multi-GPU distribution
+          model = AutoModelForCausalLM.from_pretrained(
+              model_name,
+              cache_dir='/data/huggingface',
+              token=os.environ.get('HF_TOKEN'),
+              torch_dtype=torch.float16,
+              device_map='auto',  # Automatically distribute across available GPUs
+              low_cpu_mem_usage=True
+          )
+
+          print(f'Model loaded successfully across GPUs: {model.hf_device_map}')
+
+          @app.get('/health')
+          async def health():
+              return {'status': 'healthy', 'device_map': str(model.hf_device_map)}
+
+          @app.post('/generate')
+          async def generate(data: dict):
+              prompt = data.get('prompt', 'Hello, how are you?')
+              max_length = data.get('max_length', 256)
+              temperature = data.get('temperature', 0.7)
+
+              inputs = tokenizer(prompt, return_tensors='pt').to('cuda:0')
+
+              with torch.no_grad():
+                  outputs = model.generate(
+                      **inputs,
+                      max_length=max_length,
+                      temperature=temperature,
+                      do_sample=True,
+                      pad_token_id=tokenizer.eos_token_id
+                  )
+
+              response = tokenizer.decode(outputs[0], skip_special_tokens=True)
+
+              return {
+                  'prompt': prompt,
+                  'response': response,
+                  'device_map': str(model.hf_device_map)
+              }
+
+          print('Starting server on port 8000...')
+          uvicorn.run(app, host='0.0.0.0', port=8000)
+          "
+      ports:
+        - containerPort: 8000
+      env:
+        - name: DEPLOY_VALUE
+          value: "2"
+        - name: HF_HOME
+          value: /data/huggingface
+        - name: HF_HUB_DISABLE_XET
+          value: "1"
+        - name: HF_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: hf-token-secret
+              key: HF_TOKEN
+        - name: CUDA_VISIBLE_DEVICES
+          value: "0,1"
+      resources:
+        limits:
+          nvidia.com/gpu: 2
+        requests:
+          nvidia.com/gpu: 2
+      volumeMounts:
+        - mountPath: /dev/shm
+          name: devshm
+        - mountPath: /data
+          name: data
+      securityContext:
+        capabilities:
+          add: ["IPC_LOCK"]
+  volumes:
+    - name: devshm
+      emptyDir:
+        sizeLimit: 128Gi
+        medium: Memory
+    - name: data
+      persistentVolumeClaim:
+        claimName: dgtest-pvc
