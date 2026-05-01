@@ -5,6 +5,7 @@
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=8G
 #SBATCH --gres=gpu:1
+#SBATCH --export=CEDANA_ENABLE=1
 
 # Workload: GPU PyTorch Simple Training
 # Description: Simple neural network classification with synthetic data using PyTorch (GPU)

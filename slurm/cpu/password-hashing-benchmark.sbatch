@@ -4,6 +4,7 @@
 #SBATCH --error=password-hash-%j.err
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=4G
+#SBATCH --export=CEDANA_ENABLE=1
 
 # Workload: Password Hashing Benchmark
 # Description: Tests memory-hard and CPU-intensive password hashing algorithms
