@@ -4,10 +4,11 @@ metadata:
   generateName: cuda-vector-add-hostmem-
   namespace: default
 spec:
-  # runtimeClassName: cedana # required for GPU C/R support (use nvidia for native)
+  runtimeClassName: cedana # required for GPU C/R support (use nvidia for native)
   containers:
     - name: cuda-vector-add-hostmem
       image: cedana/cedana-samples:cuda
+      imagePullPolicy: Always
       args:
         - -c
         - gpu_smr/vector_add_host
