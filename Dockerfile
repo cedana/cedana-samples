@@ -18,6 +18,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     openmpi-doc \
     libopenmpi-dev \
     build-essential \
+    libfreeimage-dev \
+    libglfw3-dev \
+    libgles2-mesa-dev \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* \
     && rm -rf /tmp/* /var/tmp/*
@@ -44,7 +47,29 @@ find /app -name "*.o" -delete
 find /app -name "*.a" -delete
 EOT
 
-FROM nvidia/cuda:${CUDA_VERSION}.0-base-ubuntu22.04 AS runtime
+# Build NVIDIA cuda-samples from the tag matching CUDA_VERSION (e.g. CUDA_VERSION=12.8 -> tag v12.8).
+# v12.8+ uses CMake at the repo root; older tags use per-sample Makefiles.
+RUN <<EOT
+set -eux
+git clone --depth 1 --branch v${CUDA_VERSION} https://github.com/NVIDIA/cuda-samples.git /tmp/cuda-samples
+cd /tmp/cuda-samples
+if [ -f CMakeLists.txt ]; then
+    cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
+    cmake --build build --parallel $(nproc)
+    mkdir -p /app/cuda-samples/bin
+    find build -type f -executable ! -name '*.so*' -exec cp {} /app/cuda-samples/bin/ \;
+else
+    make -C Samples -j$(nproc) -k || true
+    mkdir -p /app/cuda-samples/bin
+    if [ -d bin ]; then
+        find bin -type f -executable -exec cp {} /app/cuda-samples/bin/ \;
+    fi
+    find Samples -type f -executable ! -name '*.sh' ! -name 'Makefile' -path '*/release/*' -exec cp {} /app/cuda-samples/bin/ \; || true
+fi
+rm -rf /tmp/cuda-samples
+EOT
+
+FROM nvidia/cuda:${CUDA_VERSION}.0-runtime-ubuntu22.04 AS runtime
 ARG TORCH_VERSION=2.4
 ARG TARGETARCH
 
@@ -55,6 +80,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     openmpi-bin \
     git \
     build-essential \
+    libfreeimage3 \
+    libglfw3 \
+    libgles2 \
     $(if [ "$TARGETARCH" = "arm64" ]; then echo "gcc-aarch64-linux-gnu g++-aarch64-linux-gnu"; fi) \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* \
