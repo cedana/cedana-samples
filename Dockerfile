@@ -49,9 +49,13 @@ EOT
 
 # Build NVIDIA cuda-samples from the tag matching CUDA_VERSION (e.g. CUDA_VERSION=12.8 -> tag v12.8).
 # v12.8+ uses CMake at the repo root; older tags use per-sample Makefiles.
+# Note: the nvidia/cuda base image sets CUDA_VERSION env to the full X.Y.Z (e.g. 12.8.0),
+# which shadows the build ARG inside the shell, so we strip the patch component before
+# constructing the cuda-samples tag.
 RUN <<EOT
 set -eux
-git clone --depth 1 --branch v${CUDA_VERSION} https://github.com/NVIDIA/cuda-samples.git /tmp/cuda-samples
+SAMPLES_TAG="v$(echo "${CUDA_VERSION}" | cut -d. -f1,2)"
+git clone --depth 1 --branch "${SAMPLES_TAG}" https://github.com/NVIDIA/cuda-samples.git /tmp/cuda-samples
 cd /tmp/cuda-samples
 if [ -f CMakeLists.txt ]; then
     cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
