@@ -1,0 +1,23 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  generateName: cuda-samples-smoke-test-
+  namespace: default
+spec:
+  backoffLimit: 0
+  template:
+    spec:
+      restartPolicy: Never
+      runtimeClassName: cedana # required for GPU C/R support (use nvidia for native)
+      containers:
+        - name: cuda-samples-smoke-test
+          image: cedana/cedana-samples:cuda
+          args:
+            - -c
+            - /app/scripts/run-cuda-samples-tests.sh
+          env:
+            - name: PARALLEL
+              value: "1"
+          resources:
+            limits:
+              nvidia.com/gpu: 1

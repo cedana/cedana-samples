@@ -30,6 +30,7 @@ WORKDIR /app
 COPY cpu_smr/ /app/cpu_smr/
 COPY gpu_smr/ /app/gpu_smr/
 COPY kubernetes/ /app/kubernetes/
+COPY scripts/ /app/scripts/
 
 RUN <<EOT
 set -eux
@@ -57,19 +58,24 @@ set -eux
 SAMPLES_TAG="v$(echo "${CUDA_VERSION}" | cut -d. -f1,2)"
 git clone --depth 1 --branch "${SAMPLES_TAG}" https://github.com/NVIDIA/cuda-samples.git /tmp/cuda-samples
 cd /tmp/cuda-samples
+mkdir -p /app/cuda-samples/bin
 if [ -f CMakeLists.txt ]; then
     cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
     cmake --build build --parallel $(nproc)
-    mkdir -p /app/cuda-samples/bin
     find build -type f -executable ! -name '*.so*' -exec cp {} /app/cuda-samples/bin/ \;
 else
     make -C Samples -j$(nproc) -k || true
-    mkdir -p /app/cuda-samples/bin
     if [ -d bin ]; then
         find bin -type f -executable -exec cp {} /app/cuda-samples/bin/ \;
     fi
     find Samples -type f -executable ! -name '*.sh' ! -name 'Makefile' -path '*/release/*' -exec cp {} /app/cuda-samples/bin/ \; || true
 fi
+# run_tests.py / test_args.json only exist on master and v12.9+ tags. Always pull from
+# master so the smoke-test harness is present regardless of which CUDA tag we build
+# against; the runner just skips executables that aren't in the built set.
+curl -fsSL https://raw.githubusercontent.com/NVIDIA/cuda-samples/master/run_tests.py  -o /app/cuda-samples/run_tests.py
+curl -fsSL https://raw.githubusercontent.com/NVIDIA/cuda-samples/master/test_args.json -o /app/cuda-samples/test_args.json
+chmod +x /app/cuda-samples/run_tests.py
 rm -rf /tmp/cuda-samples
 EOT
 
