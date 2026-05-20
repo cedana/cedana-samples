@@ -30,7 +30,9 @@ WORKDIR /app
 COPY cpu_smr/ /app/cpu_smr/
 COPY gpu_smr/ /app/gpu_smr/
 COPY kubernetes/ /app/kubernetes/
-COPY scripts/ /app/scripts/
+# Only the cuda-samples smoke-test wrapper is shipped from scripts/; the rest
+# of scripts/ is excluded via .dockerignore.
+COPY scripts/run-cuda-samples-tests.sh /app/scripts/run-cuda-samples-tests.sh
 
 RUN <<EOT
 set -eux
