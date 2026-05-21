@@ -4,13 +4,13 @@
 # smoke test. Exits non-zero on the first sample that fails so it can gate CI.
 set -euo pipefail
 
-SAMPLES_DIR="${SAMPLES_DIR:-/app/cuda-samples}"
+SAMPLES_DIR="${SAMPLES_DIR:-/app/gpu_smr/cuda-samples}"
 BIN_DIR="${BIN_DIR:-${SAMPLES_DIR}/bin}"
 CONFIG="${CONFIG:-${SAMPLES_DIR}/test_args.json}"
 OUTPUT_DIR="${OUTPUT_DIR:-/tmp/cuda-samples-results}"
 PARALLEL="${PARALLEL:-1}"
 
-if [[ ! -x "${SAMPLES_DIR}/run_tests.py" ]] && [[ ! -f "${SAMPLES_DIR}/run_tests.py" ]]; then
+if [[ ! -f "${SAMPLES_DIR}/run_tests.py" ]]; then
     echo "run_tests.py missing at ${SAMPLES_DIR}/run_tests.py" >&2
     exit 2
 fi

@@ -14,7 +14,7 @@ spec:
           image: cedana/cedana-samples:cuda
           args:
             - -c
-            - /app/scripts/run-cuda-samples-tests.sh
+            - /app/gpu_smr/cuda-samples/run-tests.sh
           env:
             - name: PARALLEL
               value: "1"

@@ -30,9 +30,6 @@ WORKDIR /app
 COPY cpu_smr/ /app/cpu_smr/
 COPY gpu_smr/ /app/gpu_smr/
 COPY kubernetes/ /app/kubernetes/
-# Only the cuda-samples smoke-test wrapper is shipped from scripts/; the rest
-# of scripts/ is excluded via .dockerignore.
-COPY scripts/run-cuda-samples-tests.sh /app/scripts/run-cuda-samples-tests.sh
 
 RUN <<EOT
 set -eux
@@ -50,36 +47,8 @@ find /app -name "*.o" -delete
 find /app -name "*.a" -delete
 EOT
 
-# Build NVIDIA cuda-samples from the tag matching CUDA_VERSION (e.g. CUDA_VERSION=12.8 -> tag v12.8).
-# v12.8+ uses CMake at the repo root; older tags use per-sample Makefiles.
-# Note: the nvidia/cuda base image sets CUDA_VERSION env to the full X.Y.Z (e.g. 12.8.0),
-# which shadows the build ARG inside the shell, so we strip the patch component before
-# constructing the cuda-samples tag.
-RUN <<EOT
-set -eux
-SAMPLES_TAG="v$(echo "${CUDA_VERSION}" | cut -d. -f1,2)"
-git clone --depth 1 --branch "${SAMPLES_TAG}" https://github.com/NVIDIA/cuda-samples.git /tmp/cuda-samples
-cd /tmp/cuda-samples
-mkdir -p /app/cuda-samples/bin
-if [ -f CMakeLists.txt ]; then
-    cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
-    cmake --build build --parallel $(nproc)
-    find build -type f -executable ! -name '*.so*' -exec cp {} /app/cuda-samples/bin/ \;
-else
-    make -C Samples -j$(nproc) -k || true
-    if [ -d bin ]; then
-        find bin -type f -executable -exec cp {} /app/cuda-samples/bin/ \;
-    fi
-    find Samples -type f -executable ! -name '*.sh' ! -name 'Makefile' -path '*/release/*' -exec cp {} /app/cuda-samples/bin/ \; || true
-fi
-# run_tests.py / test_args.json only exist on master and v12.9+ tags. Always pull from
-# master so the smoke-test harness is present regardless of which CUDA tag we build
-# against; the runner just skips executables that aren't in the built set.
-curl -fsSL https://raw.githubusercontent.com/NVIDIA/cuda-samples/master/run_tests.py  -o /app/cuda-samples/run_tests.py
-curl -fsSL https://raw.githubusercontent.com/NVIDIA/cuda-samples/master/test_args.json -o /app/cuda-samples/test_args.json
-chmod +x /app/cuda-samples/run_tests.py
-rm -rf /tmp/cuda-samples
-EOT
+
+RUN /app/gpu_smr/cuda-samples/build.sh "${CUDA_VERSION}"
 
 FROM nvidia/cuda:${CUDA_VERSION}.0-runtime-ubuntu22.04 AS runtime
 ARG TORCH_VERSION=2.4

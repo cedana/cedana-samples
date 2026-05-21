@@ -47,8 +47,6 @@ Thumbs.db
 
 # Scripts that aren't needed in the container
 scripts/
-# ...but the cuda-samples smoke-test wrapper is invoked from inside the image
-!scripts/run-cuda-samples-tests.sh
 build.sh
 publish.sh
 
