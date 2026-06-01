@@ -2,6 +2,7 @@ ARG CUDA_VERSION=12.4
 
 FROM nvidia/cuda:${CUDA_VERSION}.0-devel-ubuntu22.04 AS builder
 
+ARG CUDA_VERSION
 ENV DEBIAN_FRONTEND=noninteractive
 LABEL maintainer="Niranjan Ravichandra <nravic@cedana.ai>"
 

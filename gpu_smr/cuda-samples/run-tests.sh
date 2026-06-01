@@ -4,7 +4,13 @@
 # smoke test. Exits non-zero on the first sample that fails so it can gate CI.
 set -euo pipefail
 
-SAMPLES_DIR="${SAMPLES_DIR:-/app/gpu_smr/cuda-samples}"
+# Default SAMPLES_DIR to this script's own directory so the smoke test works
+# wherever the cedana-samples tree is mounted. The cedana-samples image keeps it
+# under /app/gpu_smr/cuda-samples, but the cedana test image copies the tree to
+# /cedana-samples/gpu_smr/cuda-samples (see cedana test/cuda.Dockerfile). The
+# prebuilt bin/, run_tests.py and test_args.json all live next to this script.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SAMPLES_DIR="${SAMPLES_DIR:-${SCRIPT_DIR}}"
 BIN_DIR="${BIN_DIR:-${SAMPLES_DIR}/bin}"
 CONFIG="${CONFIG:-${SAMPLES_DIR}/test_args.json}"
 OUTPUT_DIR="${OUTPUT_DIR:-/tmp/cuda-samples-results}"
