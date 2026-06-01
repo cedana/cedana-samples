@@ -22,6 +22,12 @@ CUDA_VERSION="${1:?CUDA_VERSION required (e.g. 12.4)}"
 OUT_DIR="${2:-/app/gpu_smr/cuda-samples}"
 SAMPLES_TAG="v$(echo "${CUDA_VERSION}" | cut -d. -f1,2)"
 
+# Resolve OUT_DIR to an absolute path before we cd into the work dir below.
+# Otherwise a relative OUT_DIR (e.g. ./out) is created *inside* WORK_DIR and
+# wiped by the cleanup trap, leaving an empty build that exits 0.
+mkdir -p "${OUT_DIR}"
+OUT_DIR="$(cd "${OUT_DIR}" && pwd)"
+
 WORK_DIR="$(mktemp -d)"
 trap 'rm -rf "${WORK_DIR}"' EXIT
 
