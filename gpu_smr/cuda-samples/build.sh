@@ -7,20 +7,27 @@
 #   out_dir:       defaults to /app/gpu_smr/cuda-samples
 #
 # Output layout:
-#   <out_dir>/bin/             prebuilt sample executables (flattened)
-#   <out_dir>/run_tests.py     upstream test harness (always pulled from master)
-#   <out_dir>/test_args.json   upstream test config    (always pulled from master)
+#   <out_dir>/bin/               prebuilt sample executables (flattened)
+#   <out_dir>/run_tests.py       vendored test harness (cedana fork — emits results.json)
+#   <out_dir>/compare-results.py differential gate (native vs intercepted)
+#   <out_dir>/test_args.json     upstream test config (pulled from master)
 #
 # Notes:
 # - v12.8+ uses CMake at the repo root; older tags use per-sample Makefiles.
-# - run_tests.py / test_args.json only exist on master and v12.9+ tags, so we
-#   always fetch them from master regardless of the built tag. Samples not
-#   present in the built bin/ are silently absent from the test run.
+# - run_tests.py is a cedana fork checked in next to this script (it emits a
+#   machine-readable results.json the differential smoke test diffs). It and
+#   compare-results.py are copied into <out_dir> from here.
+# - test_args.json only exists on master and v12.9+ tags, so we always fetch it
+#   from master regardless of the built tag. Samples not present in the built
+#   bin/ are silently absent from the test run.
 set -euxo pipefail
 
 CUDA_VERSION="${1:?CUDA_VERSION required (e.g. 12.4)}"
 OUT_DIR="${2:-/app/gpu_smr/cuda-samples}"
 SAMPLES_TAG="v$(echo "${CUDA_VERSION}" | cut -d. -f1,2)"
+
+# Directory of this script — source of the vendored harness/gate scripts.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Resolve OUT_DIR to an absolute path before we cd into the work dir below.
 # Otherwise a relative OUT_DIR (e.g. ./out) is created *inside* WORK_DIR and
@@ -52,8 +59,14 @@ else
         -exec cp {} "${OUT_DIR}/bin/" \; || true
 fi
 
-curl -fsSL https://raw.githubusercontent.com/NVIDIA/cuda-samples/master/run_tests.py \
-    -o "${OUT_DIR}/run_tests.py"
+# Vendored harness + gate live next to this script. Copy them into OUT_DIR
+# unless we're already building in place (default OUT_DIR == SCRIPT_DIR).
+for f in run_tests.py compare-results.py; do
+    if ! [ "${SCRIPT_DIR}/${f}" -ef "${OUT_DIR}/${f}" ]; then
+        cp "${SCRIPT_DIR}/${f}" "${OUT_DIR}/${f}"
+    fi
+done
+
 curl -fsSL https://raw.githubusercontent.com/NVIDIA/cuda-samples/master/test_args.json \
     -o "${OUT_DIR}/test_args.json"
-chmod +x "${OUT_DIR}/run_tests.py"
+chmod +x "${OUT_DIR}/run_tests.py" "${OUT_DIR}/compare-results.py"
