@@ -13,7 +13,8 @@
 #   <out_dir>/test_args.json     upstream test config (pulled from master)
 #
 # Notes:
-# - v12.8+ uses CMake at the repo root; older tags use per-sample Makefiles.
+# - v12.8+ uses CMake at the repo root; older tags (<= v12.6) predate it and are
+#   skipped (exit 0, no samples) -- the smoke test only targets CMake images.
 # - run_tests.py is a cedana fork checked in next to this script (it emits a
 #   machine-readable results.json the differential smoke test diffs). It and
 #   compare-results.py are copied into <out_dir> from here.
@@ -42,22 +43,32 @@ git clone --depth 1 --branch "${SAMPLES_TAG}" \
     https://github.com/NVIDIA/cuda-samples.git "${WORK_DIR}/cuda-samples"
 
 cd "${WORK_DIR}/cuda-samples"
-mkdir -p "${OUT_DIR}/bin"
 
-if [ -f CMakeLists.txt ]; then
-    cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
-    cmake --build build --parallel "$(nproc)"
-    find build -type f -executable ! -name '*.so*' -exec cp {} "${OUT_DIR}/bin/" \;
-else
-    make -C Samples -j"$(nproc)" -k || true
-    if [ -d bin ]; then
-        find bin -type f -executable -exec cp {} "${OUT_DIR}/bin/" \;
-    fi
-    find Samples -type f -executable \
-        ! -name '*.sh' ! -name 'Makefile' \
-        -path '*/release/*' \
-        -exec cp {} "${OUT_DIR}/bin/" \; || true
+# cuda-samples only ships a root CMake build on newer tags (v12.8+). Older tags
+# (<= v12.6) predate it and use per-sample Makefiles we don't support. The
+# interception smoke test only runs on CMake-capable images, so for older CUDA
+# we skip the sample build entirely rather than ship junk binaries. Not an
+# error: the 12.2/12.4 matrix images simply won't carry cuda-samples.
+if [ ! -f CMakeLists.txt ]; then
+    echo "Skipping cuda-samples build for ${SAMPLES_TAG}: no root CMakeLists.txt (pre-CMake tag)."
+    exit 0
 fi
+
+mkdir -p "${OUT_DIR}/bin"
+cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
+cmake --build build --parallel "$(nproc)"
+find build -type f -executable ! -name '*.so*' -exec cp {} "${OUT_DIR}/bin/" \;
+
+# Guard: a CMake build should always yield runnable samples; fail loudly rather
+# than ship an empty (falsely green) smoke test. Driver-API .so / Windows .dll
+# prebuilts don't count as runnable samples.
+sample_count=$(find "${OUT_DIR}/bin" -maxdepth 1 -type f -executable \
+    ! -name '*.so*' ! -name '*.dll' | wc -l)
+if [ "${sample_count}" -eq 0 ]; then
+    echo "ERROR: no cuda-samples binaries built into ${OUT_DIR}/bin (CUDA ${CUDA_VERSION}, ${SAMPLES_TAG})" >&2
+    exit 1
+fi
+echo "Built ${sample_count} cuda-samples binaries into ${OUT_DIR}/bin"
 
 # Vendored harness + gate live next to this script. Copy them into OUT_DIR
 # unless we're already building in place (default OUT_DIR == SCRIPT_DIR).
