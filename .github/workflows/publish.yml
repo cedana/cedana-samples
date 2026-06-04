@@ -55,9 +55,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           tag: ${{ github.head_ref || github.ref_name }}
         run: |
-          gh release upload --clobber "$tag" \
-              --repo="$GITHUB_REPOSITORY" \
-              kubernetes/**/*
+          find kubernetes -type f -exec gh release upload --clobber "$tag" \
+              --repo="$GITHUB_REPOSITORY" {} +
 
   dockerhub:
     name: DockerHub
@@ -231,3 +230,4 @@ jobs:
         with:
           payload: |
             ${{ steps.summary.outputs.slack-summary }}
+

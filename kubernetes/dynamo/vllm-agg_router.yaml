@@ -1,0 +1,65 @@
+apiVersion: nvidia.com/v1alpha1
+kind: DynamoGraphDeployment
+metadata:
+  name: vllm-agg-router-cedana
+spec:
+  services:
+    Frontend:
+      envFromSecret: hf-token-secret
+      componentType: frontend
+      replicas: 1
+      envs:
+        - name: DYN_ROUTER_MODE
+          value: kv
+      extraPodSpec:
+        mainContainer:
+          image: nvcr.io/nvidia/ai-dynamo/vllm-runtime:1.0.0
+    VllmDecodeWorker:
+      envFromSecret: hf-token-secret
+      componentType: worker
+      replicas: 2
+      # Lenient liveness probe: Cedana freezes the process during checkpoint,
+      # which causes the /live endpoint to stop responding. The default probe
+      # (FailureThreshold: 1, PeriodSeconds: 5) would kill the container after
+      # ~5 s. 30 s × 120 = 3600 s gives the checkpoint an hour to complete.
+      livenessProbe:
+        httpGet:
+          path: /live
+          port: 9090
+        periodSeconds: 30
+        timeoutSeconds: 10
+        failureThreshold: 120
+      resources:
+        limits:
+          gpu: "1"
+      extraPodSpec:
+        runtimeClassName: cedana
+        securityContext:
+          runAsUser: 0
+          runAsGroup: 0
+          fsGroup: 0
+        mainContainer:
+          env:
+            - name: CEDANA_CHECKPOINT
+              value: dynamo-agg-router
+            - name: CEDANA_CRIU_OPTS
+              value: '{"link_remap": true, "tcp_established": true, "tcp_close": true}'
+            - name: CEDANA_PERSISTENT_MOUNTS
+              value: "/dev/shm"
+            - name: TORCH_DISTRIBUTED_DISABLE_IPV6
+              value: "1"
+            - name: TORCH_NCCL_ENABLE_MONITORING
+              value: "0"
+            - name: NCCL_SOCKET_FAMILY
+              value: AF_INET
+          image: nvcr.io/nvidia/ai-dynamo/vllm-runtime:1.0.0
+          workingDir: /workspace/examples/backends/vllm
+          command:
+            - python3
+            - -m
+            - dynamo.vllm
+          args:
+            - --model
+            - Qwen/Qwen3-0.6B
+            - --kv-events-config
+            - '{"publisher":"zmq","topic":"kv-events","endpoint":"tcp://*:20080","enable_kv_cache_events":true}'

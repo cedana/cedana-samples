@@ -4,6 +4,7 @@
 #SBATCH --error=monte-carlo-pi-%j.err
 #SBATCH --cpus-per-task=2
 #SBATCH --mem=2G
+#SBATCH --export=CEDANA_ENABLE=1
 
 # Workload: Monte Carlo Pi Estimation
 # Description: Stateful, long-running computation estimating Pi using Monte Carlo method

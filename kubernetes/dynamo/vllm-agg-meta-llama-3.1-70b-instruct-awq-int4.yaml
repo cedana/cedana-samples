@@ -1,0 +1,71 @@
+apiVersion: nvidia.com/v1alpha1
+kind: DynamoGraphDeployment
+metadata:
+  name: vllm-agg-llama-70b-awq-cedana
+spec:
+  services:
+    Frontend:
+      envFromSecret: hf-token-secret
+      componentType: frontend
+      replicas: 1
+      extraPodSpec:
+        mainContainer:
+          image: nvcr.io/nvidia/ai-dynamo/vllm-runtime:1.0.0
+    VllmDecodeWorker:
+      envFromSecret: hf-token-secret
+      componentType: worker
+      replicas: 1
+      # Lenient liveness probe: Cedana freezes the process during checkpoint,
+      # which causes the /live endpoint to stop responding. The default probe
+      # (FailureThreshold: 1, PeriodSeconds: 5) would kill the container after
+      # ~5 s. 30 s × 120 = 3600 s gives the checkpoint an hour to complete.
+      livenessProbe:
+        httpGet:
+          path: /live
+          port: 9090
+        periodSeconds: 30
+        timeoutSeconds: 10
+        failureThreshold: 120
+      resources:
+        limits:
+          gpu: "1"
+      extraPodSpec:
+        runtimeClassName: cedana 
+        securityContext:
+          runAsUser: 0
+          runAsGroup: 0
+          fsGroup: 0
+        volumes:
+          - name: hf-cache
+            persistentVolumeClaim:
+              claimName: hf-cache-pvc
+        mainContainer:
+          env:
+            - name: CEDANA_CHECKPOINT
+              value: dynamo-test-llama70b
+            - name: CEDANA_CRIU_OPTS
+              value: '{"link_remap": true, "tcp_established": true, "tcp_close": true}'
+            - name: CEDANA_PERSISTENT_MOUNTS
+              value: "/dev/shm"
+            - name: HF_HOME
+              value: /mnt/hf-cache
+            - name: TORCH_DISTRIBUTED_DISABLE_IPV6
+              value: "1"
+            - name: TORCH_NCCL_ENABLE_MONITORING
+              value: "0"
+            - name: NCCL_SOCKET_FAMILY
+              value: AF_INET
+          volumeMounts:
+            - name: hf-cache
+              mountPath: /mnt/hf-cache
+          image: nvcr.io/nvidia/ai-dynamo/vllm-runtime:1.0.0
+          workingDir: /workspace/examples/backends/vllm
+          command:
+            - python3
+            - -m
+            - dynamo.vllm
+          args:
+            - --model
+            - hugging-quants/Meta-Llama-3.1-70B-Instruct-AWQ-INT4
+            - --max-model-len
+            - "32768"

@@ -1,0 +1,60 @@
+apiVersion: nvidia.com/v1alpha1
+kind: DynamoGraphDeployment
+metadata:
+  name: vllm-agg-gpt-oss-20b-cedana
+spec:
+  services:
+    Frontend:
+      envFromSecret: hf-token-secret
+      componentType: frontend
+      replicas: 1
+      extraPodSpec:
+        mainContainer:
+          image: nvcr.io/nvidia/ai-dynamo/vllm-runtime:1.0.0
+    VllmDecodeWorker:
+      envFromSecret: hf-token-secret
+      componentType: worker
+      replicas: 1
+      # keep deployment alive during checkpoint 
+      livenessProbe:
+        httpGet:
+          path: /live
+          port: 9090
+        periodSeconds: 30
+        timeoutSeconds: 10
+        failureThreshold: 120
+      resources:
+        limits:
+          gpu: "1"
+      extraPodSpec:
+        runtimeClassName: cedana
+        volumes:
+          - name: hf-cache
+            persistentVolumeClaim:
+              claimName: hf-cache-pvc
+        mainContainer:
+          env:
+            - name: CEDANA_CHECKPOINT
+              value: dynamo-test-gpt-oss-10
+            - name: CEDANA_CRIU_OPTS
+              value: '{"link_remap": true, "tcp_established": true, "tcp_close": true}'
+            - name: CEDANA_PERSISTENT_MOUNTS
+              value: "/dev/shm"
+            - name: HF_HOME
+              value: /mnt/hf-cache
+            - name: TORCH_NCCL_ENABLE_MONITORING
+              value: "0"
+            - name: NCCL_SOCKET_FAMILY
+              value: AF_INET
+          volumeMounts:
+            - name: hf-cache
+              mountPath: /mnt/hf-cache
+          image: nvcr.io/nvidia/ai-dynamo/vllm-runtime:1.0.0
+          workingDir: /workspace/examples/backends/vllm
+          command:
+            - python3
+            - -m
+            - dynamo.vllm
+          args:
+            - --model
+            - openai/gpt-oss-20b

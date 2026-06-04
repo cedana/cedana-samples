@@ -1,0 +1,213 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  generateName: langgraph-agent-
+  namespace: default
+spec:
+  restartPolicy: Never
+  containers:
+    - name: langgraph-research-agent
+      image: python:3.11-slim
+      command: ["/bin/bash", "-c"]
+      args:
+        - |
+          # Install dependencies
+          pip install langgraph langchain langchain-google-genai langchain-community langchain-core \
+                      google-generativeai;
+
+          # Create the stateful agent application
+          cat > /workspace/agent.py << 'EOF'
+          import os
+          import time
+          from typing import TypedDict
+          from langgraph.graph import StateGraph, END
+          from langchain.chat_models import init_chat_model
+          from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
+          import asyncio
+
+          # State definition for the agent
+          class AgentState(TypedDict):
+              messages: list
+              task: str
+              current_step: str
+              research_data: dict
+              iterations: int
+              final_answer: str
+
+          # Initialize Gemini LLM
+          llm = init_chat_model("google_genai:gemini-1.5-pro", temperature=0.7)
+
+          # Agent node functions
+          async def plan_task(state: AgentState) -> AgentState:
+              """Plan the research task into steps"""
+              print(f"[PLAN] Starting planning phase for task: {state['task']}")
+              messages = state["messages"]
+
+              system_msg = SystemMessage(content="""You are a research planning agent.
+              Break down the user's research task into 5-7 clear, actionable steps.
+              Return a detailed plan.""")
+
+              response = await llm.ainvoke([system_msg] + messages)
+              print(f"[PLAN] Generated plan")
+
+              state["messages"].append(AIMessage(content=f"Planning: {response.content}"))
+              state["current_step"] = "research"
+              state["iterations"] = state.get("iterations", 0) + 1
+
+              await asyncio.sleep(2)
+
+              return state
+
+          async def research(state: AgentState) -> AgentState:
+              """Conduct research on the topic (multiple rounds)"""
+              print(f"[RESEARCH] Iteration {state['iterations']} - Conducting research")
+              messages = state["messages"]
+
+              system_msg = SystemMessage(content="""You are a research agent.
+              Gather detailed information about the topic. Be thorough.
+              This is a deep research task - provide comprehensive findings.""")
+
+              response = await llm.ainvoke([system_msg] + messages)
+              print(f"[RESEARCH] Completed research iteration")
+
+              state["messages"].append(AIMessage(content=f"Research: {response.content}"))
+              state["research_data"] = state.get("research_data", {})
+              state["research_data"][f"round_{state['iterations']}"] = response.content
+              state["iterations"] = state.get("iterations", 0) + 1
+
+              # Multi-round research - do 3 rounds
+              if state["iterations"] < 4:
+                  state["current_step"] = "research"
+                  await asyncio.sleep(3)
+              else:
+                  state["current_step"] = "synthesize"
+
+              return state
+
+          async def synthesize(state: AgentState) -> AgentState:
+              """Synthesize research into final answer"""
+              print(f"[SYNTHESIZE] Creating final synthesis")
+              messages = state["messages"]
+
+              system_msg = SystemMessage(content="""You are a synthesis agent.
+              Create a comprehensive, well-structured final report based on all research findings.
+              Include key insights, conclusions, and recommendations.""")
+
+              response = await llm.ainvoke([system_msg] + messages)
+              print(f"[SYNTHESIZE] Synthesis complete")
+
+              state["messages"].append(AIMessage(content=f"Synthesis: {response.content}"))
+              state["final_answer"] = response.content
+              state["current_step"] = "complete"
+              state["iterations"] = state.get("iterations", 0) + 1
+
+              await asyncio.sleep(2)
+
+              return state
+
+          async def should_continue(state: AgentState) -> str:
+              """Decide next step"""
+              current = state.get("current_step", "plan")
+              return "research" if current == "plan" else ("synthesize" if current == "research" and state["iterations"] >= 4 else ("research" if current == "research" else "end"))
+
+          async def create_agent():
+              """Create the LangGraph agent"""
+              workflow = StateGraph(AgentState)
+
+              # Add nodes
+              workflow.add_node("plan", plan_task)
+              workflow.add_node("research", research)
+              workflow.add_node("synthesize", synthesize)
+
+              # Add edges
+              workflow.set_entry_point("plan")
+              workflow.add_conditional_edges(
+                  "plan",
+                  should_continue,
+                  {
+                      "research": "research",
+                      "end": END
+                  }
+              )
+              workflow.add_conditional_edges(
+                  "research",
+                  should_continue,
+                  {
+                      "research": "research",
+                      "synthesize": "synthesize",
+                      "end": END
+                  }
+              )
+              workflow.add_conditional_edges(
+                  "synthesize",
+                  should_continue,
+                  {
+                      "end": END
+                  }
+              )
+
+              app = workflow.compile()
+              return app
+
+          async def main():
+              """Run the research agent"""
+              task = os.environ.get("RESEARCH_TASK", "Research the latest developments in quantum computing and their practical applications")
+
+              print(f"\n{'='*80}")
+              print(f"[START] Initializing LangGraph research agent")
+              print(f"[START] Task: {task}")
+              print(f"{'='*80}\n")
+
+              start_time = time.time()
+
+              # Create the agent
+              agent_app = await create_agent()
+
+              # Initialize state
+              initial_state = {
+                  "messages": [HumanMessage(content=task)],
+                  "task": task,
+                  "current_step": "plan",
+                  "research_data": {},
+                  "iterations": 0,
+                  "final_answer": ""
+              }
+
+              # Run the agent
+              result = await agent_app.ainvoke(initial_state)
+
+              elapsed = time.time() - start_time
+
+              print(f"\n{'='*80}")
+              print(f"[COMPLETE] Task finished in {elapsed:.2f}s")
+              print(f"[COMPLETE] Total iterations: {result.get('iterations')}")
+              print(f"[COMPLETE] Final answer length: {len(result.get('final_answer', ''))} chars")
+              print(f"{'='*80}\n")
+
+              print("\n=== FINAL ANSWER ===")
+              print(result.get("final_answer"))
+              print("\n")
+
+          if __name__ == "__main__":
+              asyncio.run(main())
+          EOF
+
+          # Run the agent
+          cd /workspace
+          python agent.py
+      env:
+        - name: GOOGLE_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: google-api-key
+              key: GOOGLE_API_KEY
+        - name: RESEARCH_TASK
+          value: "Research the latest developments in large language models, focusing on architectural innovations, training techniques, and real-world applications in 2024-2025"
+        - name: PYTHONUNBUFFERED
+          value: "1"
+      volumeMounts:
+        - mountPath: /workspace
+          name: workspace
+  volumes:
+    - name: workspace
+      emptyDir: {}

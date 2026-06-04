@@ -1,0 +1,74 @@
+apiVersion: nvidia.com/v1alpha1
+kind: DynamoGraphDeployment
+metadata:
+  name: sglang-agg-ds-v2-lite-cedana
+spec:
+  services:
+    Frontend:
+      envFromSecret: hf-token-secret
+      componentType: frontend
+      replicas: 1
+      extraPodSpec:
+        mainContainer:
+          image: nvcr.io/nvidia/ai-dynamo/sglang-runtime:1.0.0
+    decode:
+      envFromSecret: hf-token-secret
+      componentType: worker
+      replicas: 1
+      # Lenient liveness probe: Cedana freezes the process during checkpoint,
+      # which causes the /live endpoint to stop responding. The default probe
+      # (FailureThreshold: 1, PeriodSeconds: 5) would kill the container after
+      # ~5 s. 30 s × 120 = 3600 s gives the checkpoint an hour to complete.
+      livenessProbe:
+        httpGet:
+          path: /live
+          port: 9090
+        periodSeconds: 30
+        timeoutSeconds: 10
+        failureThreshold: 120
+      resources:
+        limits:
+          gpu: "1"
+        requests:
+          custom:
+            ephemeral-storage: "2Gi"
+      extraPodSpec:
+        runtimeClassName: cedana
+        volumes:
+          - name: hf-cache
+            persistentVolumeClaim:
+              claimName: hf-cache-pvc
+        mainContainer:
+          env:
+            - name: CEDANA_CHECKPOINT
+              value: dynamo-test-61
+            - name: CEDANA_CRIU_OPTS
+              value: '{"link_remap": true, "tcp_established": true, "tcp_close": true}'
+            - name: CEDANA_PERSISTENT_MOUNTS
+              value: "/dev/shm"
+            - name: HF_HOME
+              value: /mnt/hf-cache
+            - name: TORCH_NCCL_ENABLE_MONITORING
+              value: "0"
+            - name: NCCL_SOCKET_FAMILY
+              value: AF_INET
+          volumeMounts:
+            - name: hf-cache
+              mountPath: /mnt/hf-cache
+          image: nvcr.io/nvidia/ai-dynamo/sglang-runtime:1.0.0
+          workingDir: /workspace/examples/backends/sglang
+          command:
+            - python3
+            - -m
+            - dynamo.sglang
+          args:
+            - --model-path
+            - deepseek-ai/DeepSeek-V2-Lite
+            - --served-model-name
+            - deepseek-ai/DeepSeek-V2-Lite
+            - --page-size
+            - "16"
+            - --tp
+            - "1"
+            - --trust-remote-code
+            - --skip-tokenizer-init
