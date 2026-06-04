@@ -2,13 +2,13 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: ai-agents
+  name: opencode-sglang-qwen
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: sglang-deploy
-  namespace: ai-agents
+  namespace: opencode-sglang-qwen
 spec:
   selector:
     app: sglang
@@ -21,7 +21,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: opencode
-  namespace: ai-agents
+  namespace: opencode-sglang-qwen
 spec:
   replicas: 1
   selector:
@@ -73,7 +73,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: opencode
-  namespace: ai-agents
+  namespace: opencode-sglang-qwen
 spec:
   selector:
     app: opencode
@@ -86,7 +86,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: sglang
-  namespace: ai-agents
+  namespace: opencode-sglang-qwen
 spec:
   replicas: 1
   selector:
