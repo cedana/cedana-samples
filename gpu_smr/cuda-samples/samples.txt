@@ -1,0 +1,23 @@
+# Samples run by cuda-samples.sh. One name per line. Keep them fast, arg-free,
+# and dependency-light so they pass natively; add more over time.
+
+vectorAdd
+matrixMul
+deviceQuery
+asyncAPI
+reduction
+scan
+mergeSort
+transpose
+simpleAtomicIntrinsics
+histogram
+sortingNetworks
+convolutionSeparable
+fastWalshTransform
+simpleStreams
+simpleZeroCopy
+simpleTemplates
+alignedTypes
+clock
+simpleCallback
+quasirandomGenerator

@@ -1,9 +1,3 @@
-# Build artifacts produced by build.sh (compiled samples + upstream test config
-# fetched at build time). Only the vendored harness/gate and the wrapper scripts
-# are tracked here: build.sh, run-tests.sh, run_tests.py, compare-results.py.
+# Sample binaries built by build.sh. Only build.sh, cuda-samples.sh and
+# samples.txt are tracked here.
 bin/
-test_args.json
-
-# Local smoke-run output (run_tests.py writes results here when run in-place).
-results.json
-APM_*.txt
