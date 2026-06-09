@@ -54,7 +54,9 @@ regressions=()
 compared=0
 skipped=0
 
-while IFS= read -r line || [ -n "${line}" ]; do
+# Read the list on FD 3: `cedana run process --attach` attaches stdin (FD 0),
+# so reading the list there would let it drain the rest of the file.
+while IFS= read -r line <&3 || [ -n "${line}" ]; do
     sample="${line%%#*}"                 # strip trailing comment
     sample="${sample//[[:space:]]/}"     # strip whitespace
     [ -z "${sample}" ] && continue
@@ -82,7 +84,7 @@ while IFS= read -r line || [ -n "${line}" ]; do
         regressions+=("${sample}(rc=${rc})")
     fi
     compared=$((compared + 1))
-done <"${SAMPLES_LIST}"
+done 3<"${SAMPLES_LIST}"
 
 echo "----"
 echo "cuda-samples interception: compared=${compared} skipped=${skipped} regressions=${#regressions[@]}"
