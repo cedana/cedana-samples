@@ -1,3 +1,2 @@
-# Sample binaries built by build.sh. Only build.sh, cuda-samples.sh and
-# samples.txt are tracked here.
+# Sample binaries built by build.sh; only build.sh and samples.txt are tracked.
 bin/
