@@ -2,6 +2,7 @@ ARG CUDA_VERSION=12.4
 
 FROM nvidia/cuda:${CUDA_VERSION}.0-devel-ubuntu22.04 AS builder
 
+ARG CUDA_VERSION
 ENV DEBIAN_FRONTEND=noninteractive
 LABEL maintainer="Niranjan Ravichandra <nravic@cedana.ai>"
 
@@ -18,6 +19,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     openmpi-doc \
     libopenmpi-dev \
     build-essential \
+    libfreeimage-dev \
+    libglfw3-dev \
+    libgles2-mesa-dev \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* \
     && rm -rf /tmp/* /var/tmp/*
@@ -44,7 +48,10 @@ find /app -name "*.o" -delete
 find /app -name "*.a" -delete
 EOT
 
-FROM nvidia/cuda:${CUDA_VERSION}.0-base-ubuntu22.04 AS runtime
+
+RUN /app/gpu_smr/cuda-samples/build.sh "${CUDA_VERSION}"
+
+FROM nvidia/cuda:${CUDA_VERSION}.0-runtime-ubuntu22.04 AS runtime
 ARG TORCH_VERSION=2.4
 ARG TARGETARCH
 
@@ -55,6 +62,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     openmpi-bin \
     git \
     build-essential \
+    libfreeimage3 \
+    libglfw3 \
+    libgles2 \
     $(if [ "$TARGETARCH" = "arm64" ]; then echo "gcc-aarch64-linux-gnu g++-aarch64-linux-gnu"; fi) \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* \

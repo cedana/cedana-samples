@@ -1,0 +1,61 @@
+# Samples run by the cuda-samples bats test. One name per line, grouped by the
+# upstream Samples/<category>/ folders. Keep them fast, arg-free, and
+# dependency-light so they pass natively; add more over time.
+#
+# Comments are safe: the runner strips everything from '#' onward (full-line and
+# inline) plus surrounding whitespace, and skips blank lines. The category
+# headers below are plain comments — binaries are flattened into bin/, so only
+# the bare sample name is matched, not a path.
+
+# 0_Introduction
+vectorAdd
+matrixMul
+asyncAPI
+mergeSort
+simpleAtomicIntrinsics
+simpleTemplates
+clock
+simpleVoteIntrinsics
+
+# 1_Utilities
+deviceQuery
+
+# 2_Concepts_and_Techniques
+reduction
+scan
+histogram
+sortingNetworks
+convolutionSeparable
+scalarProd
+radixSortThrust
+shfl_scan
+threadFenceReduction
+
+# 3_CUDA_Features
+simpleCudaGraphs
+jacobiCudaGraphs
+graphMemoryNodes
+graphMemoryFootprint
+graphConditionalNodes
+
+# 4_CUDA_Libraries
+MersenneTwisterGP11213
+conjugateGradientCudaGraphs
+
+# 5_Domain_Specific
+fastWalshTransform
+quasirandomGenerator
+BlackScholes
+binomialOptions
+
+# 6_Performance
+transpose
+alignedTypes
+cudaGraphsPerfScaling
+
+# Known-unsupported under cedana interception (pass natively, fail intercepted).
+# Re-enable once the interceptor handles these; file/track separately.
+# 0_Introduction
+# simpleStreams    # cudaSetDeviceFlags after active ctx -> cudaErrorSetOnActiveProcess (708)
+# simpleZeroCopy   # cudaSetDeviceFlags(cudaDeviceMapHost) -> cudaErrorSetOnActiveProcess (708)
+# simpleCallback   # cudaStreamAddCallback -> cudaErrorStubLibrary (34), callbacks not implemented

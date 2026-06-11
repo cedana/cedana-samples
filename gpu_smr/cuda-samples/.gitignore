@@ -1,0 +1,2 @@
+# Sample binaries built by build.sh; only build.sh and samples.txt are tracked.
+bin/
