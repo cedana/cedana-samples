@@ -27,16 +27,11 @@ histogram
 sortingNetworks
 convolutionSeparable
 scalarProd
-radixSortThrust
 shfl_scan
 threadFenceReduction
 
 # 3_CUDA_Features
-simpleCudaGraphs
-jacobiCudaGraphs
-graphMemoryNodes
-graphMemoryFootprint
-graphConditionalNodes
+# (all CUDA graph samples below regress under interception — see bottom block)
 
 # 4_CUDA_Libraries
 MersenneTwisterGP11213
@@ -59,3 +54,11 @@ cudaGraphsPerfScaling
 # simpleStreams    # cudaSetDeviceFlags after active ctx -> cudaErrorSetOnActiveProcess (708)
 # simpleZeroCopy   # cudaSetDeviceFlags(cudaDeviceMapHost) -> cudaErrorSetOnActiveProcess (708)
 # simpleCallback   # cudaStreamAddCallback -> cudaErrorStubLibrary (34), callbacks not implemented
+# 2_Concepts_and_Techniques
+# radixSortThrust        # cedana-induced regression (rc=19041)
+# 3_CUDA_Features
+# simpleCudaGraphs       # cedana-induced regression (rc=19041)
+# jacobiCudaGraphs       # cedana-induced regression (rc=19041)
+# graphMemoryNodes       # cedana-induced regression (rc=19041)
+# graphMemoryFootprint   # cedana-induced regression (rc=19041)
+# graphConditionalNodes  # cedana-induced regression (rc=19041)
