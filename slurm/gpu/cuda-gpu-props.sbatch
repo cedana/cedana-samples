@@ -4,7 +4,7 @@
 #SBATCH --error=cuda-gpu-props-%j.err
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=1G
-#SBATCH --gres=gpu:1
+#SBATCH --gpus-per-node=1
 #SBATCH --export=CEDANA_ENABLE=1
 
 # Workload: CUDA GPU Properties

@@ -4,7 +4,7 @@
 #SBATCH --error=cuda-vector-add-multi-%j.err
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=8G
-#SBATCH --gres=gpu:2
+#SBATCH --gpus-per-node=2
 #SBATCH --export=CEDANA_ENABLE=1
 
 # Workload: CUDA Vector Addition (Multi-GPU)
