@@ -68,7 +68,7 @@ int main(int argc, char **argv) {
     cudaErrChk(cudaStreamBeginCapture(stream, cudaStreamCaptureModeGlobal));
     addKernel<<<blocks, THREADS, 0, stream>>>(d_buf[k], N, INCREMENT);
     cudaErrChk(cudaStreamEndCapture(stream, &graph[k]));
-    cudaErrChk(cudaGraphInstantiate(&exec[k], graph[k], 0));
+    cudaErrChk(cudaGraphInstantiateWithFlags(&exec[k], graph[k], 0));
   }
   printf("siblings READY K=%d warm=%d cold=%d gate=%s\n", K, WARM, K - WARM,
          gate ? gate : "(none)");

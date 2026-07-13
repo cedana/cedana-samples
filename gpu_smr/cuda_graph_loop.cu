@@ -48,7 +48,7 @@ int main() {
   cudaErrChk(cudaStreamBeginCapture(stream, cudaStreamCaptureModeGlobal));
   addKernel<<<blocks, THREADS, 0, stream>>>(d_buf, N, INCREMENT);
   cudaErrChk(cudaStreamEndCapture(stream, &graph));
-  cudaErrChk(cudaGraphInstantiate(&exec, graph, 0));
+  cudaErrChk(cudaGraphInstantiateWithFlags(&exec, graph, 0));
 
   long long expected = 0; // host shadow of every buffer element
   long long iter = 0;

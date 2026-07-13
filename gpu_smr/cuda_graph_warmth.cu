@@ -51,7 +51,7 @@ int main(int argc, char **argv) {
   cudaErrChk(cudaStreamBeginCapture(stream, cudaStreamCaptureModeGlobal));
   addKernel<<<blocks, THREADS, 0, stream>>>(d_buf, N, INCREMENT);
   cudaErrChk(cudaStreamEndCapture(stream, &graph));
-  cudaErrChk(cudaGraphInstantiate(&exec, graph, 0));
+  cudaErrChk(cudaGraphInstantiateWithFlags(&exec, graph, 0));
 
   // Captured + instantiated, zero launches: the "cold" checkpoint window.
   printf("graph-warmth READY captured unlaunched gate=%s\n", gate ? gate : "(none)");

@@ -45,7 +45,7 @@ void buildGraph() {
   addKernel<<<blocks, THREADS, 0, stream>>>(d_buf, N, INCREMENT);
   cudaErrChk(cudaEventRecord(evEnd, stream));    // becomes a graph node
   cudaErrChk(cudaStreamEndCapture(stream, &graph));
-  cudaErrChk(cudaGraphInstantiate(&exec, graph, 0));
+  cudaErrChk(cudaGraphInstantiateWithFlags(&exec, graph, 0));
 }
 
 void teardownGraph() {
