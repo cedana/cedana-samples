@@ -29,11 +29,6 @@ fi
 
 cd "$WORKSPACE_ROOT" || { echo "ERROR: Failed to cd to $WORKSPACE_ROOT"; exit 1; }
 
-echo "Installing system dependencies..."
-if command -v apt-get &> /dev/null; then
-    apt-get update && apt-get install -y libffi-dev build-essential --quiet 2>&1 | tail -n 5
-fi
-
 echo "Installing Python dependencies..."
 pip install argon2-cffi bcrypt passlib scrypt --quiet
 
