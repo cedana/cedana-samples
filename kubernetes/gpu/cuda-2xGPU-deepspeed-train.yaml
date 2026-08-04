@@ -416,8 +416,10 @@ spec:
       pip3 install deepspeed
       
       # Run the training
-      deepspeed --num_gpus 2 /tmp/train_cifar100.py --epochs 30
+      deepspeed --num_gpus 2 /tmp/train_cifar100.py --epochs $NUM_EPOCHS
     env:
+    - name: NUM_EPOCHS
+      value: "30"
     - name: DEPLOY_VALUE
       value: "4"
     - name: PYTHONUNBUFFERED

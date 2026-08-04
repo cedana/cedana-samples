@@ -296,8 +296,10 @@ spec:
       EOF
 
       # Execute the training script
-      python3 /scripts/pytorch_cifar100_multigpu.py --epochs 50 --num-gpus 1
+      python3 /scripts/pytorch_cifar100_multigpu.py --epochs $NUM_EPOCHS --num-gpus 1
     env:
+    - name: NUM_EPOCHS
+      value: "50"
     - name: DEPLOY_VALUE
       value: "4"
     - name: PYTHONUNBUFFERED
