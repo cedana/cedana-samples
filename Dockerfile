@@ -36,7 +36,10 @@ RUN <<EOT
 set -eux
 cd /app/gpu_smr
 export CMAKE_BUILD_PARALLEL_LEVEL=$(nproc)
-cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
+# CUDA 13 dropped Volta (compute_70); Turing (compute_75) is its minimum.
+CUDA_ARCH=70
+if [ "${CUDA_VERSION%%.*}" -ge 13 ]; then CUDA_ARCH=75; fi
+cmake -B build -S . -DCMAKE_BUILD_TYPE=Release -DCMAKE_CUDA_ARCHITECTURES="${CUDA_ARCH}"
 cmake --build build --parallel $(nproc)
 find /app/gpu_smr/build -type f -executable -exec mv {} /app/gpu_smr \;
 rm -rf /app/gpu_smr/build
