@@ -4,6 +4,7 @@
 #SBATCH --error=password-hash-%j.err
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=4G
+#SBATCH --export=CEDANA_ENABLE=1
 
 # Workload: Password Hashing Benchmark
 # Description: Tests memory-hard and CPU-intensive password hashing algorithms
@@ -27,11 +28,6 @@ if [[ ! -d "$WORKSPACE_ROOT/cpu_smr" ]]; then
 fi
 
 cd "$WORKSPACE_ROOT" || { echo "ERROR: Failed to cd to $WORKSPACE_ROOT"; exit 1; }
-
-echo "Installing system dependencies..."
-if command -v apt-get &> /dev/null; then
-    apt-get update && apt-get install -y libffi-dev build-essential --quiet 2>&1 | tail -n 5
-fi
 
 echo "Installing Python dependencies..."
 pip install argon2-cffi bcrypt passlib scrypt --quiet

@@ -1,6 +1,8 @@
 apiVersion: v1
 kind: Pod
 metadata:
+  labels:
+    app: sglang
   generateName: sglang-
   namespace: default
 spec:
@@ -15,6 +17,8 @@ spec:
         - sglang.launch_server
         - --model-path
         - meta-llama/Llama-3.1-8B
+        - --mem-fraction-static
+        - "0.90"
         - --host
         - 0.0.0.0
         - --port
@@ -30,6 +34,10 @@ spec:
           value: "1"
         - name: HF_HOME
           value: /data/huggingface
+        - name: CEDANA_CRIU_OPTS
+          value: '{"link_remap": true, "tcp_established": true, "tcp_close": true}'
+        - name: CEDANA_PERSISTENT_MOUNTS
+          value: /dev/shm
         - name: HF_HUB_DISABLE_XET
           value: "1"
         - name: HF_TOKEN

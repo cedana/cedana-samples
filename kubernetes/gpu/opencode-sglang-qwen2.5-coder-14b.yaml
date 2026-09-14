@@ -1,0 +1,168 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: opencode-sglang-qwen
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sglang-deploy
+  namespace: opencode-sglang-qwen
+spec:
+  selector:
+    app: sglang
+  ports:
+    - name: http
+      port: 8000
+      targetPort: 8000
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: opencode
+  namespace: opencode-sglang-qwen
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: opencode
+  template:
+    metadata:
+      labels:
+        app: opencode
+    spec:
+      containers:
+        - name: opencode
+          image:  ghcr.io/anomalyco/opencode
+
+          stdin: true
+          tty: true
+
+          env:
+          - name: OPENCODE_EXPERIMENTAL_OUTPUT_TOKEN_MAX
+            value: "4048"
+          - name: CEDANA_CRIU_OPTS
+            value: '{"link_remap": true, "tcp_established": true, "tcp_close": true, "file-locks": true}'
+          command:
+            - /bin/sh
+            - -c
+            - |
+              echo "Waiting for sglang..."
+              apk add curl
+              cp /usr/bin/curl /bin
+                until curl -sf http://sglang-deploy:8000/health; do
+                sleep 5
+              done
+
+              echo "Starting OpenCode..."
+              opencode web
+
+          ports:
+            - containerPort: 4096
+
+          resources:
+            requests:
+              cpu: "1"
+              memory: "4Gi"
+            limits:
+              cpu: "4"
+              memory: "8Gi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: opencode
+  namespace: opencode-sglang-qwen
+spec:
+  selector:
+    app: opencode
+  ports:
+    - name: http
+      port: 4096
+      targetPort: 4096
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sglang
+  namespace: opencode-sglang-qwen
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sglang
+  template:
+    metadata:
+      labels:
+        app: sglang
+    spec:
+      runtimeClassName: cedana
+      containers:
+        - name: dgtest-sglang
+          image: lmsysorg/sglang:v0.5.7-cu129-amd64
+          imagePullPolicy: Always
+          command:
+            - python3
+            - -m
+            - sglang.launch_server
+            - --model-path
+            - Qwen/Qwen2.5-Coder-14B-Instruct
+            - --tool-call-parser
+            - qwen
+            - --mem-fraction-static
+            - "0.90"
+            - --host
+            - 0.0.0.0
+            - --port
+            - "8000"
+            - --log-level
+            - debug
+            - --enable-metrics
+          env:
+            - name: DEPLOY_VALUE
+              value: "1"
+            - name: TMPDIR
+              value: "/dev/shm/torch_cache"
+            - name: TORCHDYNAMO_VERBOSE
+              value: "1"
+            - name: HF_HOME
+              value: /data/huggingface
+            - name: CEDANA_CHECKPOINT
+              value: sglang-qwen25-0
+            - name: CEDANA_CRIU_OPTS
+              value: '{"link_remap": true, "tcp_established": true, "tcp_close": true}'
+            - name: CEDANA_PERSISTENT_MOUNTS
+              value: /dev/shm
+            - name: HF_HUB_DISABLE_XET
+              value: "1"
+            - name: HF_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: hf-token-secret
+                  key: HF_TOKEN
+          resources:
+            requests:
+              nvidia.com/gpu: 1
+            limits:
+              nvidia.com/gpu: 1
+          securityContext:
+            capabilities:
+              add:
+                - IPC_LOCK
+          ports:
+            - containerPort: 8000
+          volumeMounts:
+            - name: devshm
+              mountPath: /dev/shm
+            - name: data
+              mountPath: /data
+      volumes:
+        - name: devshm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 200Gi
+        - name: data
+          persistentVolumeClaim:
+            claimName: dgtest-pvc
+---

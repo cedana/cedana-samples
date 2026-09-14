@@ -4,6 +4,7 @@
 #SBATCH --error=counting-%j.err
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=100M
+#SBATCH --export=CEDANA_ENABLE=1
 
 # Workload: Timestamp Logger
 # Description: Continuously logs timestamps for checkpoint/restore testing

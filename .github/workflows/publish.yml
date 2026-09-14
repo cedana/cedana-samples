@@ -194,41 +194,17 @@ jobs:
       - name: Get tag
         id: tag
         run: |
-          echo ::set-output name=tag::$(git tag --sort=-creatordate | sed -n '1p')
+          echo "tag=$(git tag --sort=-creatordate | sed -n '1p')" >> $GITHUB_OUTPUT
 
       - name: Get previous tag
         id: previous-tag
         run: |
-          echo ::set-output name=tag::$(git tag --sort=-creatordate | sed -n '2p')
-
-      - name: Get release info
-        id: release-info
-        uses: pozetroninc/github-action-get-latest-release@master
-        with:
-          token: ${{ github.token }}
-          excludes: draft
-          repository: ${{ github.repository }}
-
-      - name: Generate summary
-        id: summary
-        env:
-          RELEASE_TITLE: "cedana-samples"
-          RELEASE_DESCRIPTION: "**${{ steps.tag.outputs.tag }}**"
-          RELEASE_NOTES_URL: https://github.com/${{ github.repository }}/releases/${{ steps.tag.outputs.tag }}
-          RELEASE_BODY: "${{ steps.release-info.outputs.description }}"
-          TAG: ${{ steps.tag.outputs.tag }}
-          PREVIOUS_TAG: ${{ steps.previous-tag.outputs.tag }}
-        run: |
-          echo $RELEASE_BODY > $GITHUB_STEP_SUMMARY
-          echo ::set-output name=slack-summary::$(scripts/ci/release-summary-slack)
+          echo "tag=$(git tag --sort=-creatordate | sed -n '2p')" >> $GITHUB_OUTPUT
 
       - name: Post summary
-        id: slack-patch
-        uses: slackapi/slack-github-action@v1.26.0
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL_RELEASE }}
-          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+        uses: cedana/cedana-publish-summary@v1
         with:
-          payload: |
-            ${{ steps.summary.outputs.slack-summary }}
-
+          title: cedana-samples
+          tag: ${{ steps.tag.outputs.tag }}
+          previous-tag: ${{ steps.previous-tag.outputs.tag }}
+          slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL_RELEASE }}

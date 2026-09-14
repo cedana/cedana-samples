@@ -5,6 +5,7 @@
 #SBATCH --cpus-per-task=2
 #SBATCH --mem=4G
 #SBATCH --gres=gpu:1
+#SBATCH --export=CEDANA_ENABLE=1
 
 # Workload: CUDA Vector Addition
 # Description: Simple CUDA vector addition running in infinite loop
