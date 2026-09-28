@@ -49,7 +49,16 @@ runtime_asset_samples=(
     quasirandomGenerator_nvrtc
     stereoDisparity
 )
-asset_source_root="${WORK_DIR}/cuda-samples/Samples/5_Domain_Specific"
+asset_source_root=""
+for candidate in \
+    "${WORK_DIR}/cuda-samples/Samples/5_Domain_Specific" \
+    "${WORK_DIR}/cuda-samples/cpp/5_Domain_Specific"; do
+    [ -d "${candidate}" ] && asset_source_root="${candidate}" && break
+done
+[ -n "${asset_source_root}" ] || {
+    echo "ERROR: no Domain Specific sample directory in ${SAMPLES_TAG}" >&2
+    exit 1
+}
 asset_out_root="${OUT_DIR}/assets"
 mkdir -p "${asset_out_root}"
 
