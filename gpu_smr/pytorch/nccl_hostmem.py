@@ -1,5 +1,6 @@
-"""Multi-GPU C/R check for NCCL and host memory mappings: one process per GPU (spawned like vLLM TP workers), NCCL over a
-file rendezvous, GPU state that must survive restore, and pinned/registered host memory.
+"""Multi-GPU C/R check for NCCL and host memory mappings: one process per GPU (spawned like vLLM
+TP workers), NCCL over a file rendezvous, GPU state that must survive restore, and pinned and
+registered host memory.
 
 Every second rank 0 prints `STEP <n> state=<v> ...`. State is checked on every step, so a restore
 that resumes with lost or corrupted GPU/host state, or broken NCCL, prints FAIL and exits non-zero.
