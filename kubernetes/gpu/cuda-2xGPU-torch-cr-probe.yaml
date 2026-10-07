@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  generateName: torch-cr-probe-
+  namespace: default
+spec:
+  runtimeClassName: cedana
+  restartPolicy: Never
+  containers:
+    - name: torch-cr-probe
+      image: cedana/cedana-samples:cuda12.8-torch2.7
+      command: ["python3"]
+      args:
+        - /app/gpu_smr/pytorch/probe/torch_cr_probe.py
+      resources:
+        limits:
+          nvidia.com/gpu: 2
