@@ -1,17 +1,17 @@
 apiVersion: v1
 kind: Pod
 metadata:
-  generateName: torch-cr-probe-
+  generateName: torch-nccl-hostmem-
   namespace: default
 spec:
   runtimeClassName: cedana
   restartPolicy: Never
   containers:
-    - name: torch-cr-probe
+    - name: torch-nccl-hostmem
       image: cedana/cedana-samples:cuda12.8-torch2.7
       command: ["python3"]
       args:
-        - /app/gpu_smr/pytorch/probe/torch_cr_probe.py
+        - /app/gpu_smr/pytorch/nccl_hostmem.py
       resources:
         limits:
           nvidia.com/gpu: 2
