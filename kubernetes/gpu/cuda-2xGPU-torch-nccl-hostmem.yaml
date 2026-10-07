@@ -13,5 +13,7 @@ spec:
       args:
         - /app/gpu_smr/pytorch/nccl_hostmem.py
       resources:
+        requests:
+          memory: 48Gi  # 16 GiB sweep peak + 9 GiB live registered buffer + CUDA/NCCL overhead
         limits:
           nvidia.com/gpu: 2
