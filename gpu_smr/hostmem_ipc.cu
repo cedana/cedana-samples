@@ -13,6 +13,7 @@
 #include <cuda_runtime.h>
 #include <dlfcn.h>
 #include <fcntl.h>
+#include <signal.h>
 #include <sys/mman.h>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -209,16 +210,21 @@ int main(int argc, char** argv) {
     shared->world = world;
 
     // Workers exec this binary afresh (no CUDA state inherited across fork), like vLLM's spawn
+    pid_t pids[MAX_RANKS];
     for (int r = 0; r < world; r++) {
-        if (fork() == 0) {
+        if ((pids[r] = fork()) == 0) {
             std::string rs = std::to_string(r);
             execl("/proc/self/exe", argv[0], "--rank", rs.c_str(), path, nullptr);
             _exit(127);
         }
     }
+    // A failed rank leaves its peers waiting at a barrier forever, so take them down with it
     int status, rc = 0;
     while (wait(&status) > 0) {
-        if (!WIFEXITED(status) || WEXITSTATUS(status) != 0) rc = 1;
+        if (rc == 0 && (!WIFEXITED(status) || WEXITSTATUS(status) != 0)) {
+            rc = 1;
+            for (int r = 0; r < world; r++) kill(pids[r], SIGKILL);
+        }
     }
     unlink(path);
     return rc;
