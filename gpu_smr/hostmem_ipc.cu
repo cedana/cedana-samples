@@ -3,9 +3,9 @@
 // other's device memory through CUDA IPC every step.
 //
 // Rank 0 first sweeps host memory registration across sizes that broke before (the 8 GiB boundary,
-// vLLM's ~12 GB CPU offload buffer): cudaHostRegister and cuMemHostRegister on malloc'd and mmap'd
-// memory, cudaHostAlloc, and pinned allocations after a register attempt. It then keeps a 9 GiB
-// registered buffer live, so a checkpoint has to carry registered host memory.
+// vLLM's ~12 GB CPU offload buffer): cudaHostRegister (page-aligned and not) and cuMemHostRegister
+// on mmap'd memory, cudaHostAlloc, and pinned allocations after a register attempt. It then keeps
+// a 9 GiB registered buffer live, so a checkpoint has to carry registered host memory.
 //
 // Every second rank 0 prints `STEP <n> ...`. Any lost device/host state or broken IPC mapping
 // prints FAIL and exits non-zero. Usage: hostmem_ipc [world]  (default: all visible GPUs)
@@ -119,6 +119,15 @@ static void sweep() {
         if (!copy_ok(p, size, 7)) FAIL("cudaHostRegister %zu B copy mismatch", size);
         CHECK_CUDA(cudaHostUnregister(p));
         munmap(p, size);
+
+        // Not page-aligned at either end, like torch/malloc memory past a 64-byte chunk header
+        constexpr size_t OFFSET = 64;
+        void* base = alloc_touched(size + 4096);
+        p = static_cast<char*>(base) + OFFSET;
+        CHECK_CUDA(cudaHostRegister(p, size, cudaHostRegisterDefault));
+        if (!copy_ok(p, size, 10)) FAIL("cudaHostRegister unaligned %zu B copy mismatch", size);
+        CHECK_CUDA(cudaHostUnregister(p));
+        munmap(base, size + 4096);
 
         p = alloc_touched(size);  // driver API
         if (int rc = cuRegister(p, size, 0)) FAIL("cuMemHostRegister %zu B rc=%d", size, rc);
