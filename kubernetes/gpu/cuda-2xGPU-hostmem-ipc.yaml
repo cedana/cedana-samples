@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  generateName: hostmem-ipc-
+  namespace: default
+spec:
+  runtimeClassName: cedana
+  restartPolicy: Never
+  containers:
+    - name: hostmem-ipc
+      image: cedana/cedana-samples:cuda
+      command: ["/app/gpu_smr/hostmem_ipc"]
+      resources:
+        requests:
+          memory: 48Gi  # 16 GiB sweep peak + 9 GiB live registered buffer + CUDA overhead
+        limits:
+          nvidia.com/gpu: 2
