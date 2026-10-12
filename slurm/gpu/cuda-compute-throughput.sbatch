@@ -39,11 +39,13 @@ if [ ! -f compute-throughput-saxpy ]; then
 fi
 
 echo ""
-echo "=== Running compute throughput benchmarks ==="
+echo "=== Running compute throughput benchmarks (64M elements, repeating) ==="
 echo ""
 
-echo "Test 1: Default configuration (64M elements)"
-./compute-throughput-saxpy
-echo ""
-
-echo "Job completed at: $(date)"
+iteration=0
+while true; do
+    iteration=$((iteration + 1))
+    printf 'iteration %d: ' "$iteration"
+    ./compute-throughput-saxpy
+    sleep 1
+done

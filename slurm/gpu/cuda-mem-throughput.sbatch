@@ -39,11 +39,13 @@ if [ ! -f mem-throughput-saxpy ]; then
 fi
 
 echo ""
-echo "=== Running memory throughput benchmarks ==="
+echo "=== Running memory throughput benchmarks (64M elements, repeating) ==="
 echo ""
 
-echo "Test 1: Default configuration (64M elements)"
-./mem-throughput-saxpy
-echo ""
-
-echo "Job completed at: $(date)"
+iteration=0
+while true; do
+    iteration=$((iteration + 1))
+    printf 'iteration %d: ' "$iteration"
+    ./mem-throughput-saxpy
+    sleep 1
+done

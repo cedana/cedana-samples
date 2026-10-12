@@ -38,9 +38,12 @@ if [ ! -f gpu_props ]; then
     exit 1
 fi
 
-echo "=== CUDA Device Properties ==="
-./gpu_props
-echo ""
+echo "=== CUDA Device Properties (repeating) ==="
 
-echo ""
-echo "Job completed at: $(date)"
+iteration=0
+while true; do
+    iteration=$((iteration + 1))
+    echo "--- iteration $iteration ---"
+    ./gpu_props
+    sleep 5
+done
