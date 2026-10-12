@@ -39,6 +39,6 @@ if [ ! -f vector_add_host ]; then
 fi
 
 echo "Running vector addition on pinned host memory (infinite loop, Ctrl+C to stop)..."
-./vector_add_host
+./vector_add_host || exit $?
 
 echo "Job completed at: $(date)"

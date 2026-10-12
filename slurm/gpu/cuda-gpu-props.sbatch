@@ -44,6 +44,6 @@ iteration=0
 while true; do
     iteration=$((iteration + 1))
     echo "--- iteration $iteration ---"
-    ./gpu_props
+    ./gpu_props || exit $?
     sleep 5
 done

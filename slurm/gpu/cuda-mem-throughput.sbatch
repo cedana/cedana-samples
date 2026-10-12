@@ -46,6 +46,6 @@ iteration=0
 while true; do
     iteration=$((iteration + 1))
     printf 'iteration %d: ' "$iteration"
-    ./mem-throughput-saxpy
+    ./mem-throughput-saxpy || exit $?
     sleep 1
 done

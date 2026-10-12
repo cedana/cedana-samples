@@ -46,6 +46,6 @@ iteration=0
 while true; do
     iteration=$((iteration + 1))
     printf 'iteration %d: ' "$iteration"
-    ./compute-throughput-saxpy
+    ./compute-throughput-saxpy || exit $?
     sleep 1
 done
