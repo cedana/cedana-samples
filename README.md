@@ -32,6 +32,7 @@ The gate convention, shared with the GPU samples below: each logs `READY` once s
 | `hostmem/ghost-busy-name.py` | Processes mapping a file that is then replaced under the same name (`os.replace`), as tensor-parallel ranks do with a JIT-compiled library: a ghost file whose name is busy with another file. |
 | `fd_zoo.py` | One process tree holding the fd kinds servers use, each with state in flight: an epoll set (its registrations and which fds are ready), an eventfd count, an armed periodic timerfd, signals pending for a signalfd, queued inotify events, unread bytes in a pipe, a FIFO, `SOCK_STREAM` and `SOCK_SEQPACKET` socketpairs and a raw-mode pty (both directions), queued UDP datagrams, and an abstract unix socket and a TCP connection on 127.0.0.1 to a child process, with unread bytes both ways, whose listeners must still accept. Logs `FD <kind> ...` with the fd numbers, then `OK <round>` every 0.5 s. `tcp` needs established TCP connections checkpointed (CRIU's `--tcp-established`); `--skip` leaves kinds out. File locks are not covered. |
 
+
 ``` sh
 # Every kind of region, small; or --preset large|sparse|hicache, or your own:
 cpu_smr/hostmem/hostmem.py --preset small
