@@ -91,7 +91,14 @@ EOT
 
 # Slim CUDA workload image (customer-shaped: CUDA base + app binaries only).
 # Build with `--target smr`; the default (last) stage remains `runtime`.
+# python3 (stdlib only, no pip; ~32 MiB) runs the host memory and fd samples,
+# at /cedana-samples/cpu_smr/... as in cedana's CI image.
 FROM nvidia/cuda:${CUDA_VERSION}.0-base-ubuntu22.04 AS smr
+RUN apt-get update && apt-get install -y --no-install-recommends python3 \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+COPY cpu_smr/hostmem/ /cedana-samples/cpu_smr/hostmem/
+COPY cpu_smr/fd_zoo.py /cedana-samples/cpu_smr/
 COPY --from=smr-files /smr/ /
 WORKDIR /cedana-samples/gpu_smr
 CMD ["/bin/sh"]
