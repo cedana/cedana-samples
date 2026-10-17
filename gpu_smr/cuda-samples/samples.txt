@@ -38,10 +38,21 @@ MersenneTwisterGP11213
 conjugateGradientCudaGraphs
 
 # 5_Domain_Specific
+BlackScholes
+BlackScholes_nvrtc
+FDTD3d
+HSOpticalFlow
+MonteCarloMultiGPU
+SobolQRNG
+binomialOptions
+binomialOptions_nvrtc
+convolutionFFT2D
+dwtHaar1D
+dxtc
 fastWalshTransform
 quasirandomGenerator
-BlackScholes
-binomialOptions
+quasirandomGenerator_nvrtc
+stereoDisparity
 
 # 6_Performance
 transpose
