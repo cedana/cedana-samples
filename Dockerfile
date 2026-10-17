@@ -56,19 +56,35 @@ RUN /app/gpu_smr/cuda-samples/build.sh "${CUDA_VERSION}"
 
 # Collect only the native CUDA workloads (no python/pytorch/compbio) for the
 # slim `smr` image, laid out as /cedana-samples/gpu_smr/... like cedana's CI image.
+# The smr base image only ships libcudart + glibc/libstdc++, so cuda-samples
+# needing other CUDA libs (cuBLAS, cuRAND, ...) are left out and commented out
+# in the image's samples.txt.
 FROM builder AS smr-files
-RUN <<EOT
-set -eux
+RUN <<'EOT'
+set -eu
 out=/smr/cedana-samples/gpu_smr
+base_libs='^(libcudart\.so\.[0-9]+|libc\.so\.6|libstdc\+\+\.so\.6|libm\.so\.6|libgcc_s\.so\.1|libdl\.so\.2|libpthread\.so\.0|librt\.so\.1|ld-linux.*)$'
+extra_libs() { readelf -d "$1" | sed -n 's/.*Shared library: \[\(.*\)\]/\1/p' | grep -Ev "${base_libs}" | tr '\n' ' ' || true; }
+
 mkdir -p "${out}"
 for src in /app/gpu_smr/*.cu; do
-    cp "${src%.cu}" "${out}/"
+    bin="${src%.cu}"
+    extra="$(extra_libs "${bin}")"
+    if [ -n "${extra}" ]; then echo "ERROR: ${bin} needs ${extra}" >&2; exit 1; fi
+    cp "${bin}" "${out}/"
 done
+
 if [ -d /app/gpu_smr/cuda-samples/bin ]; then
     mkdir -p "${out}/cuda-samples/bin"
-    cp /app/gpu_smr/cuda-samples/samples.txt "${out}/cuda-samples/"
+    cp /app/gpu_smr/cuda-samples/samples.txt "${out}/cuda-samples/samples.txt"
     for s in $(sed 's/#.*//; s/[[:space:]]//g; /^$/d' /app/gpu_smr/cuda-samples/samples.txt); do
-        cp "/app/gpu_smr/cuda-samples/bin/${s}" "${out}/cuda-samples/bin/"
+        extra="$(extra_libs "/app/gpu_smr/cuda-samples/bin/${s}")"
+        if [ -n "${extra}" ]; then
+            echo "smr: excluding ${s} (needs ${extra})"
+            sed -i -E "s|^([[:space:]]*${s}([[:space:]#].*)?)\$|# \1  # excluded from smr image, needs: ${extra}|" "${out}/cuda-samples/samples.txt"
+        else
+            cp "/app/gpu_smr/cuda-samples/bin/${s}" "${out}/cuda-samples/bin/"
+        fi
     done
 fi
 EOT
