@@ -5,10 +5,13 @@
   The process forks before any CUDA call; parent and child each allocate a device buffer and an
   interprocess event, export both (cudaIpcGetMemHandle, cudaIpcGetEventHandle) through a shared
   page, and open the other's (cudaIpcOpenMemHandle, cudaIpcOpenEventHandle), as NCCL and vLLM
-  workers do. Every iteration the parent writes a new pattern into its buffer and records its
-  event; the child waits on that event on the device, checks the pattern through its IPC mapping,
-  and writes a value derived from it into its own buffer, which the parent checks through its
-  mapping after waiting on the child's event. After the iterations each side exports a fresh
+  workers do. Every iteration both sides first check that both buffers, each through its own
+  allocation and the other through the IPC mapping, still hold what the previous iteration left
+  (so a checkpoint between iterations that loses either buffer is caught before it is
+  overwritten). Then the parent writes a new pattern into its buffer and records its event; the
+  child waits on that event on the device, checks the pattern through its IPC mapping, and writes
+  a value derived from it into its own buffer, which the parent checks through its mapping after
+  waiting on the child's event. After the iterations each side exports a fresh
   buffer and opens the other's: its handle must differ from every handle exported before (a
   restore that reuses an IPC id makes a later open alias the wrong memory, or spin). An
   interceptor that does not restore the exported allocations, the opened mappings or the events,
@@ -17,7 +20,8 @@
   With no argument the work is 50 iterations. With a gate-file path as argv[1] the parent prints
   READY after the first iteration and both iterate until that file exists, letting a test
   checkpoint and restore both processes mid-work, then create the gate. Every iteration checks
-  every element on both sides, and the fresh exports are checked after: a difference prints
+  every element on both sides, both buffers are checked once more after the last iteration, and
+  the fresh exports are checked after that: a difference prints
   MISMATCH. The parent prints PASS and exits 0 once the child has exited 0; non-zero on failure.
  */
 
@@ -41,7 +45,9 @@ struct Shared {
   cudaIpcEventHandle_t ev[2];
   cudaIpcMemHandle_t fresh[2]; // exported after the iterations
   int exported[2];
-  long step[2]; // the last iteration each side has finished its part of
+  long begin;    // the last iteration the parent has started
+  long verified; // the last iteration the child has checked the previous state for
+  long step[2];  // the last iteration each side has finished its part of
   int stop;     // the parent has finished its last iteration
   int fresh_exported[2], fresh_closed[2];
   int failed; // 1 + the role of the side that failed first
@@ -123,6 +129,25 @@ static int read_errors(unsigned *d_errors, cudaStream_t s, const char *what, lon
   return 0;
 }
 
+// What a buffer holds after iteration k (all zero before the first): the parent's (r 0) the
+// pattern, the child's (r 1) the pattern * 3 + 1
+static int check_buf(const unsigned *p, long k, int r, unsigned *d_errors, cudaStream_t s, const char *what) {
+  unsigned mul = k == 0 ? 0u : r == 0 ? 1u : 3u, add = k == 0 || r == 0 ? 0u : 1u;
+  if (check(cudaMemsetAsync(d_errors, 0, sizeof(unsigned), s), "cudaMemsetAsync")) return 2;
+  check_pattern<<<64, 256, 0, s>>>(p, N, k, 0, mul, add, d_errors);
+  return read_errors(d_errors, s, what, k);
+}
+
+// Both buffers, through this side's allocation and its mapping of the other's, after iteration k
+static int check_both(unsigned *own, unsigned *peer_buf, long k, unsigned *d_errors, cudaStream_t s,
+                      const char *when) {
+  char what[96];
+  snprintf(what, sizeof(what), "own buffer %s", when);
+  if (int rc = check_buf(own, k, role, d_errors, s, what)) return rc;
+  snprintf(what, sizeof(what), "other's buffer %s", when);
+  return check_buf(peer_buf, k, 1 - role, d_errors, s, what);
+}
+
 static int run(const char *gate) {
   const int other = 1 - role;
   if (check(cudaSetDevice(0), "cudaSetDevice")) return 1;
@@ -149,7 +174,11 @@ static int run(const char *gate) {
   long k = 0;
   while (true) {
     if (role == 0) {
+      // What the previous iteration left, before anything replaces it; the child checks too
+      if (int rc = check_both(own, peer_buf, k, d_errors, s, "before the next iteration")) return rc;
       k++;
+      store(&sh->begin, k);
+      if (wait_for([&] { return load(&sh->verified) >= k; }, "the child's check")) return 2;
       write_pattern<<<64, 256, 0, s>>>(own, N, k, 0);
       if (check(cudaEventRecord(own_ev, s), "cudaEventRecord")) return 2;
       store(&sh->step[0], k);
@@ -166,9 +195,13 @@ static int run(const char *gate) {
       }
       if (gate) std::this_thread::sleep_for(std::chrono::milliseconds(100));
     } else {
-      if (wait_for([&] { return load(&sh->step[0]) > k || load(&sh->stop); }, "the parent's iteration")) return 2;
-      if (load(&sh->step[0]) == k) break; // stopped
+      if (wait_for([&] { return load(&sh->begin) > k || load(&sh->stop); }, "the parent's iteration")) return 2;
+      if (load(&sh->begin) == k) break; // stopped
+      // What the previous iteration left, before the parent's write replaces it
+      if (int rc = check_both(own, peer_buf, k, d_errors, s, "before the next iteration")) return rc;
       k++;
+      store(&sh->verified, k);
+      if (wait_for([&] { return load(&sh->step[0]) >= k; }, "the parent's write")) return 2;
       // The parent's buffer, through the mapping, once its write is done on the device
       if (check(cudaStreamWaitEvent(s, peer_ev, 0), "cudaStreamWaitEvent")) return 2;
       if (check(cudaMemsetAsync(d_errors, 0, sizeof(unsigned), s), "cudaMemsetAsync")) return 2;
@@ -180,6 +213,8 @@ static int run(const char *gate) {
     }
   }
   if (role == 0) printf("ok   %ld iterations\n", k);
+  // After a restore, when gated: both buffers still hold the last iteration
+  if (int rc = check_both(own, peer_buf, k, d_errors, s, "after the iterations")) return rc;
 
   // Fresh exports, after a restore when gated: new handles, opened next to the old ones
   unsigned *fresh = nullptr, *peer_fresh = nullptr;
@@ -208,10 +243,8 @@ static int run(const char *gate) {
   if (check(cudaMemsetAsync(d_errors, 0, sizeof(unsigned), s), "cudaMemsetAsync")) return 4;
   check_pattern<<<64, 256, 0, s>>>(peer_fresh, N, 1000 + k, other, 1u, 0u, d_errors);
   if (int rc = read_errors(d_errors, s, "other's fresh buffer", k)) return rc;
-  // The old mappings still show the last iteration
-  if (check(cudaMemsetAsync(d_errors, 0, sizeof(unsigned), s), "cudaMemsetAsync")) return 4;
-  check_pattern<<<64, 256, 0, s>>>(peer_buf, N, k, 0, role == 0 ? 3u : 1u, role == 0 ? 1u : 0u, d_errors);
-  if (int rc = read_errors(d_errors, s, "other's buffer after the fresh export", k)) return rc;
+  // The old allocations and mappings still show the last iteration
+  if (int rc = check_both(own, peer_buf, k, d_errors, s, "after the fresh export")) return rc;
   if (role == 0) printf("ok   fresh exports\n");
 
   if (check(cudaIpcCloseMemHandle(peer_fresh), "cudaIpcCloseMemHandle fresh")) return 5;
