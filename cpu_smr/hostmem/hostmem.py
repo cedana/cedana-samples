@@ -322,14 +322,16 @@ def main():
     regions = make_regions(spec)
     if not regions:
         sys.exit("no regions to map")
-    for r in regions:
-        r.allocate()
-        r.fill()
-        log(f"REGION {r.describe()}")
-
     me = os.getpid()
     pids = []
     try:
+        # Inside the try: a SIGTERM while allocating or filling (large presets take a while)
+        # still removes the files created so far (only regions allocated have a path)
+        for r in regions:
+            r.allocate()
+            r.fill()
+            log(f"REGION {r.describe()}")
+
         ready_r, ready_w = os.pipe()
         for k in range(args.procs):
             pid = os.fork()

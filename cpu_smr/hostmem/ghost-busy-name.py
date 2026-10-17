@@ -29,6 +29,15 @@ def log(f, msg):
     f.flush()
 
 
+def stop(children):
+    for pid in children:
+        try:
+            os.kill(pid, signal.SIGKILL)
+            os.waitpid(pid, 0)
+        except (ProcessLookupError, ChildProcessError):
+            pass
+
+
 def check_forever(f, name, mem, path=None, gate=None, children=()):
     count = 0
     while True:
@@ -41,13 +50,14 @@ def check_forever(f, name, mem, path=None, gate=None, children=()):
                 if live.read() != LIVE * (2 * PAGE):
                     log(f, f"MISMATCH {name}: file at {path} changed")
                     sys.exit(1)
+        # The children run until stopped: one that exited found a mismatch (or crashed)
+        for pid in children:
+            if os.waitpid(pid, os.WNOHANG)[0]:
+                log(f, f"MISMATCH {name}: child {pid} exited")
+                stop(children)
+                sys.exit(1)
         if done:
-            for pid in children:
-                if os.waitpid(pid, os.WNOHANG)[0]:
-                    log(f, f"MISMATCH {name}: child {pid} exited")
-                    sys.exit(1)
-                os.kill(pid, signal.SIGKILL)
-                os.waitpid(pid, 0)
+            stop(children)
             log(f, "PASS")
             sys.exit(0)
         log(f, f"OK {name} {count}")
