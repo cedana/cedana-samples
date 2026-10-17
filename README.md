@@ -47,16 +47,22 @@ cpu_smr/fd_zoo.py [--gate /tmp/gate] [--log /tmp/fd_zoo.log] [--dir /tmp] [--ski
 
 `/dev/shm` regions that don't fit in `/dev/shm` (64 MiB by default in Docker) are shrunk to fit, or skipped, with a `NOTE` line. `fd_zoo.py` skips a kind the Python or libc lacks with a `NOTE` line too.
 
-## GPU host memory samples (`gpu_smr/`)
-Built with the other `gpu_smr/*.cu` samples, so in every image (`/app/gpu_smr/...`, `/cedana-samples/gpu_smr/...` in `smr`). Same gate convention, with the gate path as the last argument.
+## GPU checkpoint/restore samples (`gpu_smr/`)
+Built with the other `gpu_smr/*.cu` samples, so in every image (`/app/gpu_smr/...`, `/cedana-samples/gpu_smr/...` in `smr`). Same gate convention, with the gate path as the last argument. Each checks its own results exactly; they link only libcudart (static), and those using the driver API load `libcuda.so.1` at run time.
 
 | Sample | What it exercises |
 |---|---|
 | `host_register` | One GPU. A `malloc` buffer and an anonymous `MAP_SHARED` buffer (as KV-cache offload does), registered with `cudaHostRegister(..., cudaHostRegisterMapped)`; a kernel increments every element of both through their device pointers each iteration (zero-copy), then a copy through device memory must round-trip. 20 iterations without a gate. |
 | `hostmem_ipc` | A customer's pinned-memory probe. One process per GPU (exec'd, like vLLM TP workers), each reading its neighbour's device memory through CUDA IPC every step. Rank 0 first sweeps `cudaHostRegister` (aligned and not), `cuMemHostRegister`, and `cudaHostAlloc` over sizes from 4 KiB to 16 GiB, across the 8 GiB boundary, then keeps a 9 GiB registered buffer live. Logs `STEP <n>` every second. Needs about 48 GiB of RAM; runs on one GPU too (`world` 1), without the IPC. |
+| `cuda_ipc` | Two processes (fork) on one GPU sharing device buffers and interprocess events through `cudaIpcGetMemHandle`/`cudaIpcOpenMemHandle`/`cudaIpcGetEventHandle`. After the gate each exports a fresh buffer, whose handle must not collide with any exported before. A checkpoint must take both processes. |
+| `memcpy_async_pinned` | `cudaMemcpyAsync` on four streams between pinned host memory (`cudaHostAlloc`, `cudaMallocHost`, `cudaHostRegister` of malloc and of `MAP_SHARED` memory) and device buffers allocated at new addresses after earlier ones were freed; copies are still in flight while gated. About 128 MiB of pinned memory. |
+| `device_globals` | `__device__`/`__constant__` scalars and arrays written by `cudaMemcpyToSymbol(Async)` and by kernels, read back by symbol and through cached `cudaGetSymbolAddress` pointers, plus a `__device__` pointer to a `cudaMalloc` buffer. The symbols must not move. |
+| `jit_modules` | Driver-API modules JIT-compiled from embedded PTX: one image loaded twice and another once with `cuModuleLoadDataEx` (identical images must not share globals), `cuLibraryLoadData`/CUkernel, per-module globals (`cuModuleGetGlobal`), 64 KiB of dynamic shared memory set by `cuFuncSetAttribute`/`cuKernelSetAttribute`, launched with `cuLaunchKernel`. |
+| `vmm_pools` | VMM (`cuMemAddressReserve`/`cuMemCreate`/`cuMemMap`/`cuMemSetAccess`), with an aliased mapping and a chunk remapped every iteration, and stream-ordered allocation (`cudaMallocAsync`/`cudaFreeAsync`) from the default pool and from a `cudaMemPoolCreate` pool with a release threshold. |
 
 ``` sh
 gpu_smr/host_register [/tmp/gate]
 gpu_smr/hostmem_ipc [world] [/tmp/gate]   # world 0 or none: all visible GPUs
+gpu_smr/cuda_ipc [/tmp/gate]               # likewise memcpy_async_pinned, device_globals, jit_modules, vmm_pools
 kubectl create -f kubernetes/gpu/cuda-2xGPU-hostmem-ipc.yaml
 ```
