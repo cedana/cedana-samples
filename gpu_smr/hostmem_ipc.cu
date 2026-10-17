@@ -1,14 +1,24 @@
-// Multi-GPU C/R check for host memory mappings and CUDA IPC: one process per GPU (exec'd like vLLM
-// TP workers), each holding GPU state that must survive restore, with neighbours reading each
-// other's device memory through CUDA IPC every step.
-//
-// Rank 0 first sweeps host memory registration across sizes that broke before (the 8 GiB boundary,
-// vLLM's ~12 GB CPU offload buffer): cudaHostRegister (page-aligned and not) and cuMemHostRegister
-// on mmap'd memory, cudaHostAlloc, and pinned allocations after a register attempt. It then keeps
-// a 9 GiB registered buffer live, so a checkpoint has to carry registered host memory.
-//
-// Every second rank 0 prints `STEP <n> ...`. Any lost device/host state or broken IPC mapping
-// prints FAIL and exits non-zero. Usage: hostmem_ipc [world]  (default: all visible GPUs)
+/**
+  @file hostmem_ipc.cu
+  @brief Multi-GPU registered host memory and CUDA IPC, from a customer's pinned-memory probe.
+
+  One process per GPU (exec'd like vLLM TP workers), each holding GPU state that must survive
+  restore, with neighbours reading each other's device memory through CUDA IPC every step.
+
+  Rank 0 first sweeps host memory registration across sizes that broke before (the 8 GiB
+  boundary, vLLM's ~12 GB CPU offload buffer): cudaHostRegister (page-aligned and not) and
+  cuMemHostRegister on mmap'd memory, cudaHostAlloc, and pinned allocations after a register
+  attempt. It then keeps a 9 GiB registered buffer live, so a checkpoint has to carry
+  registered host memory. Needs about 48 GiB of RAM (16 GiB sweep peak, 9 GiB live).
+
+  Every second rank 0 prints `STEP <n> ...`. Any lost device or host state, or a broken IPC
+  mapping, prints MISMATCH; a failed CUDA call prints FAIL. Either way every rank is killed and
+  it exits non-zero. With a gate-file path it prints READY after the first step and steps until
+  that file exists, letting a test checkpoint and restore it mid-work, then create the gate:
+  every rank checks its state once more, tears down, and it prints PASS and exits 0.
+
+  Usage: hostmem_ipc [world] [gate]   (world 0 or absent: all visible GPUs)
+ */
 
 #include <cuda_runtime.h>
 #include <dlfcn.h>
@@ -37,14 +47,16 @@ constexpr int MAX_RANKS = 16;
 
 static int rank = -1;
 
-#define FAIL(...)                                      \
+#define DIE(word, ...)                                 \
     do {                                               \
-        printf("FAIL rank=%d ", rank);                 \
+        printf(word " rank=%d ", rank);                \
         printf(__VA_ARGS__);                           \
         printf("\n");                                  \
         fflush(stdout);                                \
         exit(1);                                       \
     } while (0)
+#define FAIL(...) DIE("FAIL", __VA_ARGS__)          // a CUDA call or the setup failed
+#define MISMATCH(...) DIE("MISMATCH", __VA_ARGS__)  // state was lost or corrupted
 
 #define CHECK_CUDA(call)                                                       \
     do {                                                                       \
@@ -52,11 +64,14 @@ static int rank = -1;
         if (e != cudaSuccess) FAIL("%s: %s", #call, cudaGetErrorString(e));    \
     } while (0)
 
-// Shared between ranks through a MAP_SHARED file: a sense-reversing barrier and the IPC handles.
+// Shared between ranks through a MAP_SHARED file: a sense-reversing barrier, the IPC handles,
+// the gate path and rank 0's decision to stop.
 struct Shared {
     int world;
     volatile int arrived;
     volatile int generation;
+    volatile int stop;
+    char gate[4096];
     cudaIpcMemHandle_t handles[MAX_RANKS];
 };
 static Shared* shared;
@@ -116,7 +131,7 @@ static void sweep() {
     for (size_t size : SWEEP) {
         void* p = alloc_touched(size);  // runtime API, as torch's cudaHostRegister does
         CHECK_CUDA(cudaHostRegister(p, size, cudaHostRegisterDefault));
-        if (!copy_ok(p, size, 7)) FAIL("cudaHostRegister %zu B copy mismatch", size);
+        if (!copy_ok(p, size, 7)) MISMATCH("cudaHostRegister %zu B copy mismatch", size);
         CHECK_CUDA(cudaHostUnregister(p));
         munmap(p, size);
 
@@ -125,18 +140,18 @@ static void sweep() {
         void* base = alloc_touched(size + 4096);
         p = static_cast<char*>(base) + OFFSET;
         CHECK_CUDA(cudaHostRegister(p, size, cudaHostRegisterDefault));
-        if (!copy_ok(p, size, 10)) FAIL("cudaHostRegister unaligned %zu B copy mismatch", size);
+        if (!copy_ok(p, size, 10)) MISMATCH("cudaHostRegister unaligned %zu B copy mismatch", size);
         CHECK_CUDA(cudaHostUnregister(p));
         munmap(base, size + 4096);
 
         p = alloc_touched(size);  // driver API
         if (int rc = cuRegister(p, size, 0)) FAIL("cuMemHostRegister %zu B rc=%d", size, rc);
-        if (!copy_ok(p, size, 8)) FAIL("cuMemHostRegister %zu B copy mismatch", size);
+        if (!copy_ok(p, size, 8)) MISMATCH("cuMemHostRegister %zu B copy mismatch", size);
         cuUnregister(p);
         munmap(p, size);
 
         CHECK_CUDA(cudaHostAlloc(&p, size, cudaHostAllocDefault));
-        if (!copy_ok(p, size, 9)) FAIL("cudaHostAlloc %zu B copy mismatch", size);
+        if (!copy_ok(p, size, 9)) MISMATCH("cudaHostAlloc %zu B copy mismatch", size);
         CHECK_CUDA(cudaFreeHost(p));
         printf("SWEEP %zu B ok\n", size);
         fflush(stdout);
@@ -149,7 +164,7 @@ static void sweep() {
     munmap(p, MiB);
     for (int attempt = 1; attempt <= 2; attempt++) {
         CHECK_CUDA(cudaHostAlloc(&p, 2 * MiB, cudaHostAllocDefault));
-        if (!copy_ok(p, 2 * MiB, 11)) FAIL("cudaHostAlloc after register attempt %d: copy mismatch", attempt);
+        if (!copy_ok(p, 2 * MiB, 11)) MISMATCH("cudaHostAlloc after register attempt %d: copy mismatch", attempt);
         CHECK_CUDA(cudaFreeHost(p));
     }
 }
@@ -185,17 +200,28 @@ static int run_rank(int world) {
         CHECK_CUDA(cudaMemcpy(&first, state, sizeof(first), cudaMemcpyDeviceToHost));
         CHECK_CUDA(cudaMemcpy(&last, state + STATE_WORDS - 1, sizeof(last), cudaMemcpyDeviceToHost));
         if (peer) CHECK_CUDA(cudaMemcpy(&theirs, peer, sizeof(theirs), cudaMemcpyDeviceToHost));
-        if (first != step || last != step) FAIL("step=%u device state=%u/%u", step, first, last);
-        if (theirs != step) FAIL("step=%u peer state via IPC=%u", step, theirs);
-        if (!copy_ok(pinned, 4 * MiB, step % 256)) FAIL("step=%u pinned copy mismatch", step);
-        if (!copy_ok(registered, live, step % 256)) FAIL("step=%u registered copy mismatch (%zu B)", step, live);
+        if (first != step || last != step) MISMATCH("step=%u device state=%u/%u", step, first, last);
+        if (theirs != step) MISMATCH("step=%u peer state via IPC=%u", step, theirs);
+        if (!copy_ok(pinned, 4 * MiB, step % 256)) MISMATCH("step=%u pinned copy mismatch", step);
+        if (!copy_ok(registered, live, step % 256)) MISMATCH("step=%u registered copy mismatch (%zu B)", step, live);
         if (rank == 0) {
             printf("STEP %u state=%u world=%d\n", step, first, world);
+            if (step == 1 && shared->gate[0]) printf("READY\n");
             fflush(stdout);
+            shared->stop = shared->gate[0] && access(shared->gate, F_OK) == 0;
         }
         barrier();  // nobody starts the next increment until every peer read is done
+        if (shared->stop) break;  // this step, checked after the gate appeared, was the last
         sleep(1);
     }
+
+    if (peer) CHECK_CUDA(cudaIpcCloseMemHandle(peer));
+    barrier();  // nobody frees memory a peer still has open
+    CHECK_CUDA(cudaHostUnregister(registered));
+    munmap(registered, live);
+    CHECK_CUDA(cudaFreeHost(pinned));
+    CHECK_CUDA(cudaFree(state));
+    return 0;
 }
 
 int main(int argc, char** argv) {
@@ -207,9 +233,12 @@ int main(int argc, char** argv) {
         return run_rank(shared->world);
     }
 
+    setbuf(stdout, NULL);
     int world = argc > 1 ? atoi(argv[1]) : 0;
+    const char* gate = argc > 2 ? argv[2] : "";
     if (world <= 0) CHECK_CUDA(cudaGetDeviceCount(&world));
     if (world > MAX_RANKS) FAIL("world %d > %d", world, MAX_RANKS);
+    if (strlen(gate) >= sizeof(Shared::gate)) FAIL("gate path too long");
 
     char path[] = "/tmp/hostmem_ipc.XXXXXX";
     int fd = mkstemp(path);
@@ -217,6 +246,7 @@ int main(int argc, char** argv) {
     shared = static_cast<Shared*>(mmap(nullptr, sizeof(Shared), PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0));
     memset(shared, 0, sizeof(Shared));
     shared->world = world;
+    strcpy(shared->gate, gate);
 
     // Workers exec this binary afresh (no CUDA state inherited across fork), like vLLM's spawn
     pid_t pids[MAX_RANKS];
@@ -236,5 +266,6 @@ int main(int argc, char** argv) {
         }
     }
     unlink(path);
+    if (rc == 0) printf("PASS\n");
     return rc;
 }
