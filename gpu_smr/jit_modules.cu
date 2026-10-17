@@ -17,8 +17,11 @@
   With no argument the work is 50 iterations. With a gate-file path as argv[1] it prints READY
   after the first iteration and iterates until that file exists, letting a test checkpoint and
   restore it mid-work, then create the gate; it then loads both images again and runs them once
-  more. Every iteration checks every buffer, every launch counter and that every global is where
-  it was: a difference prints MISMATCH. Prints PASS and exits 0; non-zero on failure.
+  more. Every iteration first checks that every buffer, launch counter and g_add still holds what
+  the previous iteration left (so a checkpoint between iterations that loses one is caught before
+  a1's g_add is rewritten or a launch changes the rest), and checks them again after its launches,
+  along with that every global is where it was; they are checked once more after the last
+  iteration. A difference prints MISMATCH. Prints PASS and exits 0; non-zero on failure.
  */
 
 #include <chrono>
@@ -169,6 +172,7 @@ struct Work {
   unsigned *buf = nullptr;
   std::vector<unsigned> expected = {};
   unsigned calls = 0; // launches so far
+  unsigned add = 0;   // what g_add holds
 };
 
 static CUresult load_module(const char *image, CUmodule *mod) {
@@ -207,6 +211,7 @@ static int init_buffer(Work &w, unsigned seed) {
 }
 
 static int set_add(Work &w, unsigned add) {
+  w.add = add;
   return check(d_cuMemcpyHtoD(w.g_add, &add, sizeof(add)), "cuMemcpyHtoD g_add");
 }
 
@@ -223,21 +228,27 @@ static int launch(Work &w, unsigned add) {
   return 0;
 }
 
-static int verify(Work &w) {
+static int verify(Work &w, const char *when) {
   std::vector<unsigned> got(N);
   if (check(cudaMemcpy(got.data(), w.buf, N * sizeof(unsigned), cudaMemcpyDeviceToHost),
             "cudaMemcpy from device"))
     return 2;
   for (unsigned i = 0; i < N; i++) {
     if (got[i] != w.expected[i]) {
-      printf("MISMATCH %s buf[%u] = %u, expected %u\n", w.name, i, got[i], w.expected[i]);
+      printf("MISMATCH %s buf[%u] = %u, expected %u (%s)\n", w.name, i, got[i], w.expected[i], when);
       return 3;
     }
   }
   unsigned calls = 0;
   if (check(d_cuMemcpyDtoH(&calls, w.g_calls, sizeof(calls)), "cuMemcpyDtoH g_calls")) return 2;
   if (calls != w.calls) {
-    printf("MISMATCH %s g_calls = %u, expected %u\n", w.name, calls, w.calls);
+    printf("MISMATCH %s g_calls = %u, expected %u (%s)\n", w.name, calls, w.calls, when);
+    return 3;
+  }
+  unsigned add = 0;
+  if (check(d_cuMemcpyDtoH(&add, w.g_add, sizeof(add)), "cuMemcpyDtoH g_add")) return 2;
+  if (add != w.add) {
+    printf("MISMATCH %s g_add = %u, expected %u (%s)\n", w.name, add, w.add, when);
     return 3;
   }
   return 0;
@@ -303,20 +314,21 @@ int main(int argc, char **argv) {
     return 3;
   }
   // a2, b and lib keep their g_add; a1's changes every iteration
-  if (set_add(a2, 7) || set_add(b, 11) || set_add(l, 13)) return 1;
+  if (set_add(a1, 0) || set_add(a2, 7) || set_add(b, 11) || set_add(l, 13)) return 1;
 
   long iterations = 0;
   unsigned add1 = 0;
   while (true) {
+    // What the previous iteration left, before a1's g_add is rewritten or a launch changes the rest
+    for (Work *w : {&a1, &a2, &b, &l})
+      if (int rc = verify(*w, "before the next iteration")) return rc;
     add1 = (unsigned)(iterations % 5) + 1;
     if (set_add(a1, add1)) return 2;
     if (launch(a1, add1) || launch(a2, 7) || launch(b, 11) || launch(l, 13)) return 2;
     if (check(d_cuCtxSynchronize(), "kernels")) return 2;
     iterations++;
-    if (int rc = verify(a1)) return rc;
-    if (int rc = verify(a2)) return rc;
-    if (int rc = verify(b)) return rc;
-    if (int rc = verify(l)) return rc;
+    for (Work *w : {&a1, &a2, &b, &l})
+      if (int rc = verify(*w, "after the iteration")) return rc;
     if (int rc = verify_globals(a1, mod_a1)) return rc;
     if (int rc = verify_globals(a2, mod_a2)) return rc;
     if (int rc = verify_globals(b, mod_b)) return rc;
@@ -325,6 +337,9 @@ int main(int argc, char **argv) {
     if (gate) std::this_thread::sleep_for(std::chrono::milliseconds(100));
   }
   printf("ok   %ld iterations\n", iterations);
+  // After a restore, when gated: everything still holds the last iteration
+  for (Work *w : {&a1, &a2, &b, &l})
+    if (int rc = verify(*w, "after the iterations")) return rc;
 
   // The attributes must still be set
   int v = 0;
@@ -354,7 +369,7 @@ int main(int argc, char **argv) {
   if (launch(a3, 17) || launch(b2, 19) || launch(a1, add1) || launch(b, 11)) return 4;
   if (check(d_cuCtxSynchronize(), "kernels after the fresh loads")) return 4;
   for (Work *w : {&a1, &a2, &b, &l, &a3, &b2})
-    if (int rc = verify(*w)) return rc;
+    if (int rc = verify(*w, "after the fresh loads")) return rc;
   printf("ok   fresh loads\n");
 
   for (Work *w : {&a1, &a2, &b, &l, &a3, &b2})
