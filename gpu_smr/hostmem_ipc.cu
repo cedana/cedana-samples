@@ -11,8 +11,9 @@
   attempt. It then keeps a 9 GiB registered buffer live, so a checkpoint has to carry
   registered host memory. Needs about 48 GiB of RAM (16 GiB sweep peak, 9 GiB live).
 
-  Every second rank 0 prints `STEP <n> ...`. Any lost device or host state, or a broken IPC
-  mapping, prints MISMATCH; a failed CUDA call prints FAIL. Either way every rank is killed and
+  Every second rank 0 prints `STEP <n> ...`. Each step checks that the pinned and registered host
+  buffers still hold what the previous step wrote before writing new values. Any lost device or
+  host state, or a broken IPC mapping, prints MISMATCH; a failed CUDA call prints FAIL. Either way every rank is killed and
   it exits non-zero. With a gate-file path it prints READY after the first step and steps until
   that file exists, letting a test checkpoint and restore it mid-work, then create the gate:
   every rank checks its state once more, tears down, and it prints PASS and exits 0.
@@ -29,6 +30,7 @@
 #include <unistd.h>
 
 #include <algorithm>
+#include <cerrno>
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
@@ -95,8 +97,8 @@ __global__ void mismatches(const uint8_t* buf, size_t n, uint8_t want, unsigned 
         if (buf[i] != want) atomicAdd(count, 1ull);
 }
 
-// Pinned DMA actually works: fill on the host, copy to the GPU asynchronously, compare there.
-static bool copy_ok(void* host, size_t size, uint8_t value) {
+// The first CHECK bytes of host memory hold value, as the GPU reads them over pinned DMA.
+static bool holds(const void* host, size_t size, uint8_t value) {
     static uint8_t* scratch;
     static unsigned long long* count;
     if (!scratch) {
@@ -104,13 +106,18 @@ static bool copy_ok(void* host, size_t size, uint8_t value) {
         CHECK_CUDA(cudaMalloc(&count, sizeof(*count)));
     }
     size_t n = std::min(size, CHECK);
-    memset(host, value, n);
     CHECK_CUDA(cudaMemset(count, 0, sizeof(*count)));
     CHECK_CUDA(cudaMemcpyAsync(scratch, host, n, cudaMemcpyHostToDevice));
     mismatches<<<256, 256>>>(scratch, n, value, count);
     unsigned long long bad = 0;
     CHECK_CUDA(cudaMemcpy(&bad, count, sizeof(bad), cudaMemcpyDeviceToHost));
     return bad == 0;
+}
+
+// Pinned DMA actually works: fill on the host, copy to the GPU asynchronously, compare there.
+static bool copy_ok(void* host, size_t size, uint8_t value) {
+    memset(host, value, std::min(size, CHECK));
+    return holds(host, size, value);
 }
 
 static void* alloc_touched(size_t size) {
@@ -187,6 +194,7 @@ static int run_rank(int world) {
 
     void* pinned;
     CHECK_CUDA(cudaHostAlloc(&pinned, 4 * MiB, cudaHostAllocDefault));
+    memset(pinned, 0, 4 * MiB);  // what step 1 finds there, as in the registered buffer
     size_t live = rank == 0 ? LIVE_REGISTERED : 4 * MiB;
     void* registered = alloc_touched(live);  // as vLLM CPU offload and SGLang HiCache do
     CHECK_CUDA(cudaHostRegister(registered, live, cudaHostRegisterDefault));
@@ -202,6 +210,11 @@ static int run_rank(int world) {
         if (peer) CHECK_CUDA(cudaMemcpy(&theirs, peer, sizeof(theirs), cudaMemcpyDeviceToHost));
         if (first != step || last != step) MISMATCH("step=%u device state=%u/%u", step, first, last);
         if (theirs != step) MISMATCH("step=%u peer state via IPC=%u", step, theirs);
+        // The host buffers still hold what the previous step wrote, before this step replaces it
+        uint8_t prev = step == 1 ? 0 : (step - 1) % 256;
+        if (!holds(pinned, 4 * MiB, prev)) MISMATCH("step=%u pinned buffer lost the previous step's contents", step);
+        if (!holds(registered, live, prev))
+            MISMATCH("step=%u registered buffer lost the previous step's contents (%zu B)", step, live);
         if (!copy_ok(pinned, 4 * MiB, step % 256)) MISMATCH("step=%u pinned copy mismatch", step);
         if (!copy_ok(registered, live, step % 256)) MISMATCH("step=%u registered copy mismatch (%zu B)", step, live);
         if (rank == 0) {
@@ -248,21 +261,40 @@ int main(int argc, char** argv) {
     shared->world = world;
     strcpy(shared->gate, gate);
 
-    // Workers exec this binary afresh (no CUDA state inherited across fork), like vLLM's spawn
-    pid_t pids[MAX_RANKS];
+    // Workers exec this binary afresh (no CUDA state inherited across fork), like vLLM's spawn.
+    // pids[r] is 0 once rank r is reaped (or was never started), so only live workers are signalled.
+    pid_t pids[MAX_RANKS] = {};
+    int rc = 0;
+    auto stop_workers = [&] {
+        for (int r = 0; r < world; r++)
+            if (pids[r] > 0) kill(pids[r], SIGKILL);
+    };
     for (int r = 0; r < world; r++) {
-        if ((pids[r] = fork()) == 0) {
+        pid_t pid = fork();
+        if (pid == 0) {
             std::string rs = std::to_string(r);
             execl("/proc/self/exe", argv[0], "--rank", rs.c_str(), path, nullptr);
             _exit(127);
         }
+        if (pid < 0) {
+            printf("FAIL fork rank %d: %s\n", r, strerror(errno));
+            rc = 1;
+            stop_workers();
+            break;
+        }
+        pids[r] = pid;
     }
     // A failed rank leaves its peers waiting at a barrier forever, so take them down with it
-    int status, rc = 0;
-    while (wait(&status) > 0) {
+    int status;
+    pid_t pid;
+    while ((pid = wait(&status)) > 0 || (pid < 0 && errno == EINTR)) {
+        if (pid < 0) continue;
+        for (int r = 0; r < world; r++)
+            if (pids[r] == pid) pids[r] = 0;
         if (rc == 0 && (!WIFEXITED(status) || WEXITSTATUS(status) != 0)) {
+            printf("FAIL a worker (pid %d) exited with status %d; stopping the others\n", pid, status);
             rc = 1;
-            for (int r = 0; r < world; r++) kill(pids[r], SIGKILL);
+            stop_workers();
         }
     }
     unlink(path);
