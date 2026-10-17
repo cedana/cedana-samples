@@ -54,6 +54,32 @@ EOT
 
 RUN /app/gpu_smr/cuda-samples/build.sh "${CUDA_VERSION}"
 
+# Collect only the native CUDA workloads (no python/pytorch/compbio) for the
+# slim `smr` image, laid out as /cedana-samples/gpu_smr/... like cedana's CI image.
+FROM builder AS smr-files
+RUN <<EOT
+set -eux
+out=/smr/cedana-samples/gpu_smr
+mkdir -p "${out}"
+for src in /app/gpu_smr/*.cu; do
+    cp "${src%.cu}" "${out}/"
+done
+if [ -d /app/gpu_smr/cuda-samples/bin ]; then
+    mkdir -p "${out}/cuda-samples/bin"
+    cp /app/gpu_smr/cuda-samples/samples.txt "${out}/cuda-samples/"
+    for s in $(sed 's/#.*//; s/[[:space:]]//g; /^$/d' /app/gpu_smr/cuda-samples/samples.txt); do
+        cp "/app/gpu_smr/cuda-samples/bin/${s}" "${out}/cuda-samples/bin/"
+    done
+fi
+EOT
+
+# Slim CUDA workload image (customer-shaped: CUDA base + app binaries only).
+# Build with `--target smr`; the default (last) stage remains `runtime`.
+FROM nvidia/cuda:${CUDA_VERSION}.0-base-ubuntu22.04 AS smr
+COPY --from=smr-files /smr/ /
+WORKDIR /cedana-samples/gpu_smr
+CMD ["/bin/sh"]
+
 FROM nvidia/cuda:${CUDA_VERSION}.0-runtime-ubuntu22.04 AS runtime
 ARG TORCH_VERSION=2.4
 ARG TARGETARCH
