@@ -133,8 +133,8 @@ class Region:
         return mmap.mmap(fd, self.size, mmap.MAP_SHARED, mmap.PROT_READ | mmap.PROT_WRITE)
 
     def _open(self, path):
-        self.path = path
         self.fd = os.open(path, os.O_RDWR | os.O_CREAT | os.O_EXCL, 0o600)
+        self.path = path  # only once created: cleanup removes what has a path
         os.ftruncate(self.fd, self.size)
         self.mem = self._map(self.fd)
 
@@ -255,6 +255,15 @@ def make_regions(spec):
     return regions
 
 
+# Each child's count of full verification passes, in a page apart from the regions (which
+# may all be private), so the parent can require a fresh pass from every child at the gate
+beats = None
+
+
+def beat(k):
+    return int.from_bytes(beats[k * 8:(k + 1) * 8], "little")
+
+
 def child(k, regions, ready_w, parent):
     """Verify every region, then count the pass in each comm page, until stopped"""
     for r in regions:
@@ -271,6 +280,7 @@ def child(k, regions, ready_w, parent):
             if not r.shared and r.counter(k) != n - 1:
                 fail(f"child{k}: {r.describe()}: its own private counter is {r.counter(k)}, not {n - 1}")
             r.set_counter(k, n)
+        beats[k * 8:(k + 1) * 8] = n.to_bytes(8, "little")
         time.sleep(0.1)
     sys.exit(0)
 
@@ -322,6 +332,8 @@ def main():
     regions = make_regions(spec)
     if not regions:
         sys.exit("no regions to map")
+    global beats
+    beats = mmap.mmap(-1, PAGE)  # MAP_SHARED | MAP_ANONYMOUS
     me = os.getpid()
     pids = []
     try:
@@ -363,13 +375,16 @@ def main():
             log("OK " + " ".join(map(str, last)))
             time.sleep(0.5)
 
-        # The gate: everything once more, and every child still writing to every shared region
+        # The gate: everything once more, every child through a fresh full pass of its own
+        # (private regions included), and still writing to every shared region
         last = check(regions, args.procs, pids, last)
+        passes = [beat(k) for k in range(args.procs)]
         deadline = time.monotonic() + 30
-        while any(r.shared for r in regions) and \
-                any(c <= l for c, l in zip(counts(regions, args.procs), last)):
+        while any(beat(k) <= passes[k] for k in range(args.procs)) or (any(r.shared for r in regions) and
+                any(c <= l for c, l in zip(counts(regions, args.procs), last))):
             if time.monotonic() > deadline:
-                fail(f"parent: the children's counters stopped at {counts(regions, args.procs)}")
+                fail(f"parent: the children stopped at passes {[beat(k) for k in range(args.procs)]}, "
+                     f"counters {counts(regions, args.procs)}")
             time.sleep(0.1)
         check(regions, args.procs, pids, last)
         for pid in pids:
