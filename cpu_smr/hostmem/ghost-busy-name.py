@@ -103,7 +103,10 @@ def main():
     os.replace(tmp, lib)
 
     log(f, "READY")
-    check_forever(f, "parent", mem, lib, args.gate, children)
+    try:
+        check_forever(f, "parent", mem, lib, args.gate, children)
+    finally:
+        stop(children)  # whichever way the parent ends, a mismatch of its own included
 
 
 if __name__ == "__main__":
