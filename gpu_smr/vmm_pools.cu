@@ -18,8 +18,10 @@
   With no argument the work is 30 iterations. With a gate-file path as argv[1] it prints READY
   after the first iteration and iterates until that file exists, letting a test checkpoint and
   restore it mid-work, then create the gate; it then remaps and allocates once more. Every
-  iteration checks every word of the range, the alias and the pool buffers: a difference prints
-  MISMATCH. Prints PASS and exits 0; non-zero on failure.
+  iteration, and the phase after it, checks every word of the range, the alias and the long-lived
+  pool buffers before changing, remapping or freeing any of them (so a checkpoint between
+  iterations that loses a chunk about to be replaced is still caught), and again after: a
+  difference prints MISMATCH. Prints PASS and exits 0; non-zero on failure.
  */
 
 #include <chrono>
@@ -244,9 +246,22 @@ int main(int argc, char **argv) {
   if (check(cudaStreamSynchronize(s), "fill pool buffers")) return 1;
 
   Held held[HELD];
+  // The VMM range and alias, the long-lived pool buffers and the held ones, as last left
+  auto check_all = [&]() -> int {
+    if (int rc = vmm.check_contents(got)) return rc;
+    if (int rc = read_and_verify("default pool buffer", from_def, POOL_WORDS, def_base, s, got)) return rc;
+    if (int rc = read_and_verify("created pool buffer", from_pool, POOL_WORDS, pool_base, s, got)) return rc;
+    for (Held &h : held)
+      if (h.p)
+        if (int rc = read_and_verify("held pool buffer", h.p, h.words, h.base, s, got)) return rc;
+    return 0;
+  };
   long iterations = 0;
   while (true) {
     unsigned k = (unsigned)iterations + 1;
+
+    // What the previous iteration left, before anything below changes, remaps or frees it
+    if (int rc = check_all()) return rc;
 
     // VMM: everything +1, chunk 0 +10 more through the alias, then a chunk remapped
     add<<<64, 256>>>(vmm.chunk(0), CHUNKS * vmm.words, 1);
@@ -303,7 +318,9 @@ int main(int argc, char **argv) {
            (unsigned long long)THRESHOLD);
     return 3;
   }
-  // After a restore, when gated: remap every chunk but 0, trim the pool, allocate from both again
+  // After a restore, when gated: everything as the last iteration left it, before it is remapped
+  if (int rc = check_all()) return rc;
+  // Then remap every chunk but 0, trim the pool, allocate from both again
   for (int c = 1; c < CHUNKS; c++)
     if (vmm.remap(c, 9000000u + c)) return 4;
   if (int rc = vmm.check_contents(got)) return rc;
