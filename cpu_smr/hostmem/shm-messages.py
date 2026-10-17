@@ -16,7 +16,9 @@ Usage: shm-messages.py <log> [--gate PATH]
 
 import argparse
 import multiprocessing as mp
+import multiprocessing.connection
 import os
+import signal
 import sys
 import time
 from multiprocessing import shared_memory
@@ -47,8 +49,11 @@ def consumer(name, queue, free, log_path, received):
     while True:
         seq = queue.get()
         slot = seq % SLOTS
-        if seq != expected or bytes(shm.buf[slot * SLOT:(slot + 1) * SLOT]) != payload(seq):
-            log.write(f"MISMATCH got {seq}, expected {expected}\n")
+        if seq != expected:
+            log.write(f"MISMATCH got message {seq}, expected {expected} (lost or reordered)\n")
+            sys.exit(1)
+        if bytes(shm.buf[slot * SLOT:(slot + 1) * SLOT]) != payload(seq):
+            log.write(f"MISMATCH message {seq}'s payload in slot {slot} is corrupted\n")
             sys.exit(1)
         free.release()
         expected += 1
@@ -58,23 +63,39 @@ def consumer(name, queue, free, log_path, received):
             last_log = time.monotonic()
 
 
+def stop(procs):
+    """Terminate the workers still running. Returns the exit code of one that exited on its
+    own (never in a healthy run: both run until stopped), else None."""
+    failed = None
+    for p in procs:
+        if p.exitcode is not None and failed is None:
+            failed = p.exitcode or 1
+        if p.is_alive():
+            p.terminate()
+        p.join()
+        if p.exitcode != -signal.SIGTERM and failed is None:
+            failed = p.exitcode or 1
+    return failed
+
+
 def gate(path, procs, received, log_path):
     """Run until the gate exists, then require more messages, stop both and log PASS"""
     while not os.path.exists(path):
-        for p in procs:
-            if p.exitcode is not None:
-                sys.exit(p.exitcode or 1)
+        if any(p.exitcode is not None for p in procs):
+            sys.exit(stop(procs) or 1)  # stop the other first: exiting joins it
         time.sleep(0.1)
     seen, deadline = received.value, time.monotonic() + 30
     while received.value <= seen:
         if time.monotonic() > deadline or any(p.exitcode is not None for p in procs):
             with open(log_path, "a") as log:
                 log.write(f"MISMATCH no messages received after the gate, stuck at {seen}\n")
-            sys.exit(1)
+            sys.exit(stop(procs) or 1)
         time.sleep(0.1)
-    for p in procs:
-        p.terminate()
-        p.join()
+    failed = stop(procs)  # a worker that failed after the last check still fails the run
+    if failed is not None:
+        with open(log_path, "a") as log:
+            log.write(f"MISMATCH a worker exited on its own ({failed}) before the end\n")
+        sys.exit(failed)
     with open(log_path, "a") as log:
         log.write(f"PASS {received.value} messages\n")
 
@@ -103,10 +124,10 @@ def main():
         shm.close()
         shm.unlink()
         return
-    for p in procs:
-        p.join()
-        if p.exitcode:
-            sys.exit(p.exitcode)
+    # Either worker exiting is a failure; wait for whichever exits first, then stop the other
+    # (a producer left alone would wait forever for slots the consumer frees)
+    mp.connection.wait([p.sentinel for p in procs])
+    sys.exit(stop(procs) or 1)
 
 
 if __name__ == "__main__":
