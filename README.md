@@ -60,10 +60,12 @@ Built with the other `gpu_smr/*.cu` samples, so in every image (`/app/gpu_smr/..
 | `device_globals` | `__device__`/`__constant__` scalars and arrays written by `cudaMemcpyToSymbol(Async)` and by kernels, read back by symbol and through cached `cudaGetSymbolAddress` pointers, plus a `__device__` pointer to a `cudaMalloc` buffer. The symbols must not move. |
 | `jit_modules` | Driver-API modules JIT-compiled from embedded PTX: one image loaded twice and another once with `cuModuleLoadDataEx` (identical images must not share globals), `cuLibraryLoadData`/CUkernel, per-module globals (`cuModuleGetGlobal`), 64 KiB of dynamic shared memory set by `cuFuncSetAttribute`/`cuKernelSetAttribute`, launched with `cuLaunchKernel`. |
 | `vmm_pools` | VMM (`cuMemAddressReserve`/`cuMemCreate`/`cuMemMap`/`cuMemSetAccess`), with an aliased mapping and a chunk remapped every iteration, and stream-ordered allocation (`cudaMallocAsync`/`cudaFreeAsync`) from the default pool and from a `cudaMemPoolCreate` pool with a release threshold. |
+| `replaced_module` | Driver-API modules whose image file is replaced by rename after they're loaded: image A loaded by path (`cuModuleLoad`) and from a mapping of another file (`cuModuleLoadData`), then both files replaced with image B (same kernel name, different result), and the path loaded again. Each module must keep running the image it was loaded from, and after the gate the path loads B and the mapping A. |
+| `cumem_ipc_fd` | Two processes sharing VMM allocations through exported file descriptors, as NCCL does with cuMem buffers: `cuMemCreate` with POSIX-fd handles, `cuMemExportToShareableHandle`, the fds sent over a unix socket (`SCM_RIGHTS`), `cuMemImportFromShareableHandle`. The child closes one fd after importing and keeps the other open; after the gate a fresh allocation is exported and imported, and the kept fd is imported again. |
 
 ``` sh
 gpu_smr/host_register [/tmp/gate]
 gpu_smr/hostmem_ipc [world] [/tmp/gate]   # world 0 or none: all visible GPUs
-gpu_smr/cuda_ipc [/tmp/gate]               # likewise memcpy_async_pinned, device_globals, jit_modules, vmm_pools
+gpu_smr/cuda_ipc [/tmp/gate]               # likewise memcpy_async_pinned, device_globals, jit_modules, vmm_pools, replaced_module, cumem_ipc_fd
 kubectl create -f kubernetes/gpu/cuda-2xGPU-hostmem-ipc.yaml
 ```
