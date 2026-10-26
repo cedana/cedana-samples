@@ -123,7 +123,7 @@ static int roundTrip(Grid &g, cudaStream_t stream, std::vector<float> &out) {
   const double scale = (double)g.realCount();
   for (size_t i = 0; i < out.size(); i++) {
     double want = g.input[i] * scale;
-    if (std::fabs(out[i] - want) > 1e-3 * scale) {
+    if (!std::isfinite(out[i]) || std::fabs(out[i] - want) > 1e-3 * scale) {
       printf("MISMATCH grid %d element %zu: %f, want %f\n", g.n, i, out[i], want);
       return 3;
     }
