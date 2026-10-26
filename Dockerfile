@@ -58,7 +58,7 @@ RUN /app/gpu_smr/cuda-samples/build.sh "${CUDA_VERSION}"
 # slim `smr` image, laid out as /cedana-samples/gpu_smr/... like cedana's CI image.
 # The smr base image only ships libcudart + glibc/libstdc++, so cuda-samples
 # needing other CUDA libs (cuBLAS, cuRAND, ...) are left out and commented out
-# in the image's samples.txt.
+# in the image's samples.txt. The cufft_* samples need libcufft and are left out too.
 FROM builder AS smr-files
 RUN <<'EOT'
 set -eu
@@ -70,6 +70,9 @@ mkdir -p "${out}"
 for src in /app/gpu_smr/*.cu; do
     bin="${src%.cu}"
     extra="$(extra_libs "${bin}")"
+    case "${bin##*/}" in
+        cufft_*) echo "smr: excluding ${bin##*/} (needs ${extra})"; continue ;;
+    esac
     if [ -n "${extra}" ]; then echo "ERROR: ${bin} needs ${extra}" >&2; exit 1; fi
     cp "${bin}" "${out}/"
 done
