@@ -58,12 +58,13 @@ RUN /app/gpu_smr/cuda-samples/build.sh "${CUDA_VERSION}"
 # slim `smr` image, laid out as /cedana-samples/gpu_smr/... like cedana's CI image.
 # The smr base image only ships libcudart + glibc/libstdc++, so cuda-samples
 # needing other CUDA libs (cuBLAS, cuRAND, ...) are left out and commented out
-# in the image's samples.txt.
+# in the image's samples.txt. libcuda.so.1 is the driver, which the GPU host
+# provides; ctx_destroy and multi_ctx_threads link it.
 FROM builder AS smr-files
 RUN <<'EOT'
 set -eu
 out=/smr/cedana-samples/gpu_smr
-base_libs='^(libcudart\.so\.[0-9]+|libc\.so\.6|libstdc\+\+\.so\.6|libm\.so\.6|libgcc_s\.so\.1|libdl\.so\.2|libpthread\.so\.0|librt\.so\.1|ld-linux.*)$'
+base_libs='^(libcuda\.so\.1|libcudart\.so\.[0-9]+|libc\.so\.6|libstdc\+\+\.so\.6|libm\.so\.6|libgcc_s\.so\.1|libdl\.so\.2|libpthread\.so\.0|librt\.so\.1|ld-linux.*)$'
 extra_libs() { readelf -d "$1" | sed -n 's/.*Shared library: \[\(.*\)\]/\1/p' | grep -Ev "${base_libs}" | tr '\n' ' ' || true; }
 
 mkdir -p "${out}"
