@@ -128,27 +128,26 @@ int main() {
   if (drv(createContext(&b, 0, dev), "main", "cuCtxCreate B")) return 1;
   if (drv(cuCtxPopCurrent(&popped), "main", "cuCtxPopCurrent B")) return 1;
   std::thread t(thread_b, b);
-  wait_for(1);
-  if (failed) {
-    t.join();
-    return 1;
-  }
-  if (rt(cudaSetDevice(0), "main", "cudaSetDevice 0, P")) return 1;
-  if (rt(cudaMalloc(&dp, N * sizeof(int)), "main", "cudaMalloc on P")) return 1;
-  if (use(dp, 2, "main", "kernel on P")) return 1;
-  if (!no_reset && rt(cudaDeviceReset(), "main", "cudaDeviceReset, ends P")) {
+  // An error return must not leave T joinable, or std::thread's destructor terminates.
+  auto finish = [&](int rc) {
     fail();
-    t.join();
-    return 2;
-  }
+    if (t.joinable()) t.join();
+    return rc;
+  };
+  wait_for(1);
+  if (failed) return finish(1);
+  if (rt(cudaSetDevice(0), "main", "cudaSetDevice 0, P")) return finish(1);
+  if (rt(cudaMalloc(&dp, N * sizeof(int)), "main", "cudaMalloc on P")) return finish(1);
+  if (use(dp, 2, "main", "kernel on P")) return finish(1);
+  if (!no_reset && rt(cudaDeviceReset(), "main", "cudaDeviceReset, ends P")) return finish(2);
   set_stage(2);
   wait_for(3);
   if (!keep_t) t.join();
-  if (failed) return 3;
-  if (rt(cudaMalloc(&dp, N * sizeof(int)), "main", "cudaMalloc on P after the reset")) return 4;
-  if (use(dp, 4, "main", "kernel on P after the reset")) return 4;
-  if (drv(cuCtxDestroy(b), "main", "cuCtxDestroy B")) return 5;
-  if (use(dp, 5, "main", "kernel on P after the destroy of B")) return 5;
+  if (failed) return finish(3);
+  if (rt(cudaMalloc(&dp, N * sizeof(int)), "main", "cudaMalloc on P after the reset")) return finish(4);
+  if (use(dp, 4, "main", "kernel on P after the reset")) return finish(4);
+  if (drv(cuCtxDestroy(b), "main", "cuCtxDestroy B")) return finish(5);
+  if (use(dp, 5, "main", "kernel on P after the destroy of B")) return finish(5);
   set_stage(4);
   if (keep_t) t.join();
   if (!no_reset && rt(cudaDeviceReset(), "main", "cudaDeviceReset before exit")) return 6;
