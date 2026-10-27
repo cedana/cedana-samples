@@ -22,6 +22,14 @@ on:
         type: boolean
         description: "Build supplementary Docker images"
         default: false
+      image_lite:
+        type: boolean
+        description: "Build the lite image (what cedana's tests run)"
+        default: false
+      lite_cuda_versions:
+        type: string
+        description: "CUDA versions of the lite image (JSON list)"
+        default: '["12.2", "12.4", "12.8", "13.2"]'
       image_name:
         type: string
         description: "Name of the Docker image to build"
@@ -119,18 +127,14 @@ jobs:
           path: /tmp/image-name/*
           if-no-files-found: error
 
-  image-smr:
-    name: Image (smr)
-    if: ${{ inputs.image }}
-    runs-on: runs-on=${{github.run_id}}/runner=4cpu-${{ matrix.arch }}/tag=${{ matrix.cuda_version }}-smr/extras=s3-cache
+  image-lite:
+    name: Image (lite)
+    if: ${{ inputs.image_lite }}
+    runs-on: runs-on=${{github.run_id}}/runner=8cpu-${{ matrix.arch }}/tag=${{ matrix.cuda_version }}-lite/extras=s3-cache
     strategy:
       fail-fast: false
       matrix:
-        cuda_version:
-          - 12.2
-          - 12.4
-          - 12.8
-          - 13.2
+        cuda_version: ${{ fromJSON(inputs.lite_cuda_versions) }}
         arch:
           - amd64
           - arm64
@@ -166,14 +170,14 @@ jobs:
           build-args: |
             CUDA_VERSION=${{ matrix.cuda_version }}
           context: .
-          target: smr
+          target: lite
           push: true
           platforms: linux/${{ matrix.arch }}
           labels: ${{ steps.meta.outputs.labels }}
           outputs: |
             type=image,name=${{ inputs.image_name }},push-by-digest=true,name-canonical=true,push=true
-          cache-from: type=s3,blobs_prefix=cache/${{ inputs.image_name }}/,manifests_prefix=cache/${{ inputs.image_name }}/${{ matrix.cuda_version }}/smr/${{ matrix.arch }},region=${{ env.RUNS_ON_AWS_REGION }},bucket=${{ env.RUNS_ON_S3_BUCKET_CACHE }}
-          cache-to: type=s3,blobs_prefix=cache/${{ inputs.image_name }}/,manifests_prefix=cache/${{ inputs.image_name }}/${{ matrix.cuda_version }}/smr/${{ matrix.arch }},region=${{ env.RUNS_ON_AWS_REGION }},bucket=${{ env.RUNS_ON_S3_BUCKET_CACHE }},mode=max
+          cache-from: type=s3,blobs_prefix=cache/${{ inputs.image_name }}/,manifests_prefix=cache/${{ inputs.image_name }}/${{ matrix.cuda_version }}/lite/${{ matrix.arch }},region=${{ env.RUNS_ON_AWS_REGION }},bucket=${{ env.RUNS_ON_S3_BUCKET_CACHE }}
+          cache-to: type=s3,blobs_prefix=cache/${{ inputs.image_name }}/,manifests_prefix=cache/${{ inputs.image_name }}/${{ matrix.cuda_version }}/lite/${{ matrix.arch }},region=${{ env.RUNS_ON_AWS_REGION }},bucket=${{ env.RUNS_ON_S3_BUCKET_CACHE }},mode=max
 
       - name: Export digest
         run: |
@@ -184,7 +188,7 @@ jobs:
       - name: Upload digest
         uses: actions/upload-artifact@v4
         with:
-          name: digests-smr-${{ matrix.cuda_version }}-${{ matrix.arch }}
+          name: digests-lite-${{ matrix.cuda_version }}-${{ matrix.arch }}
           path: /tmp/digests/*
           if-no-files-found: error
           retention-days: 1

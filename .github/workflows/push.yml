@@ -1,0 +1,37 @@
+name: Push
+
+# Builds and publishes main's lite image (cuda12.8-lite-main, and
+# cuda12.8-lite-<sha>): the workloads cedana's tests take by default.
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: push-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build
+    uses: ./.github/workflows/build.yml
+    secrets: inherit
+    with:
+      image_lite: true
+      lite_cuda_versions: '["12.8"]'
+      image_name: cedana/cedana-samples-test
+
+  publish:
+    name: Publish
+    uses: ./.github/workflows/publish.yml
+    needs: build
+    secrets: inherit
+    with:
+      dockerhub: true
+      post_summary: false
+      image: false
+      image_supplementary: false
+      lite_cuda_versions: '["12.8"]'
+      image_name: cedana/cedana-samples-test

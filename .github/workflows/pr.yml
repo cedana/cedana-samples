@@ -1,5 +1,9 @@
 name: PR
 
+# Builds and publishes the lite image at the PR's head (cuda12.8-lite-<sha>),
+# the workloads cedana's tests take when marshal tests this PR with its ticket's
+# other PRs. The other images are only built on release.
+
 on:
   pull_request:
     types: [opened, synchronize]
@@ -17,8 +21,9 @@ jobs:
     uses: ./.github/workflows/build.yml
     secrets: inherit
     with:
-      image: true
-      image_supplementary: true
+      ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      image_lite: true
+      lite_cuda_versions: '["12.8"]'
       image_name: cedana/cedana-samples-test
 
   publish:
@@ -29,3 +34,7 @@ jobs:
     with:
       dockerhub: true
       post_summary: false
+      image: false
+      image_supplementary: false
+      lite_cuda_versions: '["12.8"]'
+      image_name: cedana/cedana-samples-test
