@@ -1,7 +1,8 @@
 cmake_minimum_required(VERSION 3.8 FATAL_ERROR)
 
 if(NOT DEFINED CMAKE_CUDA_ARCHITECTURES)
-  set(CMAKE_CUDA_ARCHITECTURES 70) # minimum Volta
+  # SASS from Volta to Hopper, PTX for Hopper (the Dockerfile sets it per CUDA version)
+  set(CMAKE_CUDA_ARCHITECTURES "70-real;75-real;80-real;86-real;89-real;90")
 endif()
 
 project(cedana-bench LANGUAGES CXX CUDA)

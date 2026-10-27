@@ -44,10 +44,16 @@ RUN <<EOT
 set -eux
 cd /app/gpu_smr
 export CMAKE_BUILD_PARALLEL_LEVEL=$(nproc)
-# CUDA 13 dropped Volta (compute_70); Turing (compute_75) is its minimum.
-CUDA_ARCH=70
-if [ "${CUDA_VERSION%%.*}" -ge 13 ]; then CUDA_ARCH=75; fi
-cmake -B build -S . -DCMAKE_BUILD_TYPE=Release -DCMAKE_CUDA_ARCHITECTURES="${CUDA_ARCH}"
+# Native code (SASS) for every GPU generation, as real workloads ship, and PTX
+# for the newest only: a GPU without its own SASS JIT-compiles the PTX at load
+# (an A10G did with sm_70-only builds, where cedana's GPU restore failed with
+# CUDA error 222). CUDA 13 dropped Volta (compute_70); 12.8 added Blackwell.
+case "${CUDA_VERSION}" in
+12.[0-7]*) CUDA_ARCHS="70-real;75-real;80-real;86-real;89-real;90" ;;
+12.*) CUDA_ARCHS="70-real;75-real;80-real;86-real;89-real;90-real;100-real;120" ;;
+*) CUDA_ARCHS="75-real;80-real;86-real;89-real;90-real;100-real;120" ;;
+esac
+cmake -B build -S . -DCMAKE_BUILD_TYPE=Release -DCMAKE_CUDA_ARCHITECTURES="${CUDA_ARCHS}"
 cmake --build build --parallel $(nproc)
 find /app/gpu_smr/build -type f -executable -exec mv {} /app/gpu_smr \;
 rm -rf /app/gpu_smr/build
