@@ -21,6 +21,8 @@ endif()
 # These workloads import driver API names at link time, as an application built against cuda.h
 # does, so they link libcuda. The other workloads reach the driver through dlopen.
 set(DRIVER_LINKED_WORKLOADS ctx_destroy multi_ctx_threads)
+# CUDA::cuda_driver falls back to the toolkit's stub libcuda in a build image without a driver
+find_package(CUDAToolkit REQUIRED)
 
 # Add a separate executable for each local workload automatically
 file(GLOB WORKLOADS "./*.cu")
@@ -29,6 +31,6 @@ foreach(WORKLOAD ${WORKLOADS})
   add_executable(${WORKLOAD_NAME} ${WORKLOAD})
   target_link_libraries(${WORKLOAD_NAME} ${CUDA_LIBRARIES})
   if(WORKLOAD_NAME IN_LIST DRIVER_LINKED_WORKLOADS)
-    target_link_libraries(${WORKLOAD_NAME} ${CUDA_CUDA_LIBRARY})
+    target_link_libraries(${WORKLOAD_NAME} CUDA::cuda_driver)
   endif()
 endforeach()
