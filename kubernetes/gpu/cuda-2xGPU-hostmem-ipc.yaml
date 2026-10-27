@@ -8,7 +8,7 @@ spec:
   restartPolicy: Never
   containers:
     - name: hostmem-ipc
-      image: cedana/cedana-samples:cuda
+      image: cedana/cedana-samples:cuda-lite
       command: ["/app/gpu_smr/hostmem_ipc"]
       resources:
         requests:

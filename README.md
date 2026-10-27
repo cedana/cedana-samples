@@ -5,6 +5,10 @@ For Kubernetes examples, see examples in our helm-chart repo: https://github.com
 
 You can also use the cedana/cedana-samples docker container to run the arbitrary samples in here (which is the recommended approach - this container has everything!). 
 
+## Images
+- `cedana/cedana-samples:cuda<version>-torch<version>` (`cuda` is 12.8 with torch 2.7), `cpu` and `compbio`: everything, with the Python stacks. Built on release only.
+- `cedana/cedana-samples:cuda<version>-lite` (`cuda-lite` is 12.8): what cedana's tests run. Every workload built, with `kubernetes/` and `slurm/`, at `/cedana-samples` (and `/app`) on the CUDA base image, with a bare `python3`. PRs and main publish it as `cedana/cedana-samples-test:cuda12.8-lite-<commit>` (and `cuda12.8-lite-main`), which cedana's tests take at the commit marshal tests.
+
 ## Setup 
 Highly recommend using the requirements.txt to set up a virtualenv. 
 
@@ -21,7 +25,7 @@ source env/bin/active && pip install -r requirements.txt
 Llama.cpp is downloaded directly from its github repo and unzipped into /usr/local/bin. To run arbitrary models, run `llama-cli -hf HUGGINGFACEMODEL`. 
 
 ## Host memory and fd samples (`cpu_smr/`)
-Checkpoint/restore regression workloads for shared memory, ghost files (files unlinked while still mapped), IPC and the file descriptors servers hold. Python 3 stdlib only, no root needed. They are in both images, and in the slim `smr` image (with a bare `python3`) at `/cedana-samples/cpu_smr/...`.
+Checkpoint/restore regression workloads for shared memory, ghost files (files unlinked while still mapped), IPC and the file descriptors servers hold. Python 3 stdlib only, no root needed. They are in every image, at `/cedana-samples/cpu_smr/...` in `lite`.
 
 The gate convention, shared with the GPU samples below: each logs `READY` once set up, progress lines while running, and `MISMATCH ...` (then exits non-zero) when state is lost or corrupted (`FAIL ...` when a call fails). With a gate file (`--gate PATH` here, the last argument for the GPU samples) each runs until that file exists, checks once more, logs `PASS` and exits 0, so a test can checkpoint and restore it mid-run and then create the gate. Without one they run until killed.
 
@@ -49,7 +53,7 @@ cpu_smr/fd_zoo.py [--gate /tmp/gate] [--log /tmp/fd_zoo.log] [--dir /tmp] [--ski
 `/dev/shm` regions that don't fit in `/dev/shm` (64 MiB by default in Docker) are shrunk to fit, or skipped, with a `NOTE` line. `fd_zoo.py` skips a kind the Python or libc lacks with a `NOTE` line too.
 
 ## GPU checkpoint/restore samples (`gpu_smr/`)
-Built with the other `gpu_smr/*.cu` samples, so in every image (`/app/gpu_smr/...`, `/cedana-samples/gpu_smr/...` in `smr`). Same gate convention, with the gate path as the last argument. Each checks its own results exactly; they link only libcudart (static), and those using the driver API load `libcuda.so.1` at run time.
+Built with the other `gpu_smr/*.cu` samples, so in every image (`/app/gpu_smr/...`, `/cedana-samples/gpu_smr/...` in `lite`). Same gate convention, with the gate path as the last argument. Each checks its own results exactly; they link only libcudart (static), and those using the driver API load `libcuda.so.1` at run time.
 
 | Sample | What it exercises |
 |---|---|

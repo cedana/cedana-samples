@@ -1,6 +1,6 @@
 ARG CUDA_VERSION=12.4
 
-FROM nvidia/cuda:${CUDA_VERSION}.0-devel-ubuntu22.04 AS builder
+FROM nvidia/cuda:${CUDA_VERSION}.0-devel-ubuntu22.04 AS devel
 
 ARG CUDA_VERSION
 ENV DEBIAN_FRONTEND=noninteractive
@@ -26,11 +26,19 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/* \
     && rm -rf /tmp/* /var/tmp/*
 
+# NVIDIA's cuda-samples (~20 min): only its build script and the CUDA version
+# decide it, so a change to the workloads doesn't rebuild it.
+FROM devel AS cuda-samples
+ARG CUDA_VERSION
+COPY gpu_smr/cuda-samples/build.sh /build.sh
+RUN /build.sh "${CUDA_VERSION}" /cuda-samples && mkdir -p /cuda-samples/bin
+
+FROM devel AS builder
+ARG CUDA_VERSION
 WORKDIR /app
 
 COPY cpu_smr/ /app/cpu_smr/
 COPY gpu_smr/ /app/gpu_smr/
-COPY kubernetes/ /app/kubernetes/
 
 RUN <<EOT
 set -eux
@@ -51,57 +59,51 @@ find /app -name "*.o" -delete
 find /app -name "*.a" -delete
 EOT
 
+COPY --from=cuda-samples /cuda-samples/bin/ /app/gpu_smr/cuda-samples/bin/
+COPY kubernetes/ /app/kubernetes/
 
-RUN /app/gpu_smr/cuda-samples/build.sh "${CUDA_VERSION}"
-
-# Collect only the native CUDA workloads (no python/pytorch/compbio) for the
-# slim `smr` image, laid out as /cedana-samples/gpu_smr/... like cedana's CI image.
-# The smr base image only ships libcudart + glibc/libstdc++, so cuda-samples
-# needing other CUDA libs (cuBLAS, cuRAND, ...) are left out and commented out
-# in the image's samples.txt.
-FROM builder AS smr-files
+# The lite image's /cedana-samples: the built workloads, without the
+# cuda-samples that samples.txt doesn't list. Its CUDA workloads must run on
+# the CUDA base image (libcudart only), as a customer's would.
+FROM builder AS lite-files
 RUN <<'EOT'
 set -eu
-out=/smr/cedana-samples/gpu_smr
+out=/lite/cedana-samples
 base_libs='^(libcudart\.so\.[0-9]+|libc\.so\.6|libstdc\+\+\.so\.6|libm\.so\.6|libgcc_s\.so\.1|libdl\.so\.2|libpthread\.so\.0|librt\.so\.1|ld-linux.*)$'
 extra_libs() { readelf -d "$1" | sed -n 's/.*Shared library: \[\(.*\)\]/\1/p' | grep -Ev "${base_libs}" | tr '\n' ' ' || true; }
 
-mkdir -p "${out}"
 for src in /app/gpu_smr/*.cu; do
     bin="${src%.cu}"
     extra="$(extra_libs "${bin}")"
     if [ -n "${extra}" ]; then echo "ERROR: ${bin} needs ${extra}" >&2; exit 1; fi
-    cp "${bin}" "${out}/"
 done
 
-if [ -d /app/gpu_smr/cuda-samples/bin ]; then
-    mkdir -p "${out}/cuda-samples/bin"
-    cp /app/gpu_smr/cuda-samples/samples.txt "${out}/cuda-samples/samples.txt"
-    for s in $(sed 's/#.*//; s/[[:space:]]//g; /^$/d' /app/gpu_smr/cuda-samples/samples.txt); do
-        extra="$(extra_libs "/app/gpu_smr/cuda-samples/bin/${s}")"
-        if [ -n "${extra}" ]; then
-            echo "smr: excluding ${s} (needs ${extra})"
-            sed -i -E "s|^([[:space:]]*${s}([[:space:]#].*)?)\$|# \1  # excluded from smr image, needs: ${extra}|" "${out}/cuda-samples/samples.txt"
-        else
-            cp "/app/gpu_smr/cuda-samples/bin/${s}" "${out}/cuda-samples/bin/"
-        fi
-    done
-fi
+mkdir -p /lite
+cp -a /app "${out}"
+bin=/app/gpu_smr/cuda-samples/bin
+rm -rf "${out}/gpu_smr/cuda-samples/bin"
+mkdir -p "${out}/gpu_smr/cuda-samples/bin"
+for s in $(sed 's/#.*//; s/[[:space:]]//g; /^$/d' /app/gpu_smr/cuda-samples/samples.txt); do
+    if [ -f "${bin}/${s}" ]; then cp "${bin}/${s}" "${out}/gpu_smr/cuda-samples/bin/"; fi
+done
 EOT
 
-# Slim CUDA workload image (customer-shaped: CUDA base + app binaries only).
-# Build with `--target smr`; the default (last) stage remains `runtime`.
-# python3 (stdlib only, no pip; ~32 MiB) runs the host memory and fd samples,
-# at /cedana-samples/cpu_smr/... as in cedana's CI image.
-FROM nvidia/cuda:${CUDA_VERSION}.0-base-ubuntu22.04 AS smr
+# The image cedana's tests run (`cuda-lite`): every workload, built, with the
+# Kubernetes manifests and the SLURM scripts, at /cedana-samples (and /app, as
+# in the other images) on the CUDA base image. Build with `--target lite`; the
+# default (last) stage remains `runtime`. python3 (stdlib only, no pip;
+# ~32 MiB) runs the host memory and fd samples. requirements.txt is what the
+# GPU tests' PyTorch workloads install.
+FROM nvidia/cuda:${CUDA_VERSION}.0-base-ubuntu22.04 AS lite
 RUN apt-get update && apt-get install -y --no-install-recommends python3 \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
-COPY cpu_smr/hostmem/ /cedana-samples/cpu_smr/hostmem/
-COPY cpu_smr/fd_zoo.py /cedana-samples/cpu_smr/
-COPY --from=smr-files /smr/ /
-WORKDIR /cedana-samples/gpu_smr
-CMD ["/bin/sh"]
+COPY --from=lite-files /lite/ /
+COPY slurm/ /cedana-samples/slurm/
+COPY requirements-torch2.7.txt /cedana-samples/requirements.txt
+RUN ln -s /cedana-samples /app
+WORKDIR /cedana-samples
+ENTRYPOINT ["/bin/bash"]
 
 FROM nvidia/cuda:${CUDA_VERSION}.0-runtime-ubuntu22.04 AS runtime
 ARG TORCH_VERSION=2.4

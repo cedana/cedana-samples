@@ -18,6 +18,7 @@ jobs:
     with:
       image: true
       image_supplementary: true
+      image_lite: true
 
   publish:
     name: Publish
