@@ -102,6 +102,9 @@ COPY --from=lite-files /lite/ /
 COPY slurm/ /cedana-samples/slurm/
 COPY requirements-torch2.7.txt /cedana-samples/requirements.txt
 RUN ln -s /cedana-samples /app
+# CPU pods run it too, so it claims no GPUs: the base image's "all" made cedana's
+# runtime run any pod of it as a GPU job. A GPU pod's device plugin sets its own.
+ENV NVIDIA_VISIBLE_DEVICES=
 WORKDIR /cedana-samples
 ENTRYPOINT ["/bin/bash"]
 
