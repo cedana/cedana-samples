@@ -1,27 +1,16 @@
 /**
   @file cufft_replan.cu
-  @brief cuFFT plans destroyed and created again before a checkpoint, as the PME tuning of
-  GROMACS does.
-
-  GROMACS does PME on the GPU with one pair of 3D cuFFT plans per PME grid: an R2C plan and a C2R
-  plan from cufftPlanMany(). At the start of a run it tunes the grid, and at each change it
-  destroys the plan pair and creates a new one. This sample does the same over the grid sizes of
-  the PME tuning of a GROMACS run (44, 40, 36, 32, 28, then 42), with one forward and one inverse
-  FFT per plan pair. A GPU interceptor that keeps a cuFFT module call in its checkpoint after the
-  module of that call is unloaded replays the call with a stale module handle at the restore.
-
-  With --control the sample makes one plan pair, for the last size only, and destroys nothing.
-
-  Each round trip, R2C then C2R, must give the input times the number of grid points. The sample
-  computes the input and the expected values on the CPU and compares every element.
-
-  With no gate argument the sample does 100 round trips on the last plan pair. With a gate-file
-  path it prints READY after the first round trip on the last plan pair and does round trips until
-  that file exists, so a test can checkpoint and restore it mid-work, then create the gate. Prints
-  one ok/FAIL line per step and PASS at the end. Exits 0 on PASS, 1 on a failure before the last
-  plan pair, 2 on a failure after it, and 3 on a wrong FFT result.
+  @brief Destroys and creates cuFFT plans before a checkpoint, as the PME tuning of GROMACS
+  does (CED-2542).
 
   Usage: cufft_replan [--control] [gate-file]
+
+  --control: make only the last plan pair. Destroy no plan.
+  gate-file: print READY after the first round trip on the last plan pair. Continue until the
+  file exists.
+
+  Exits 0 on PASS, 1 on a failure before the last plan pair, 2 on a failure after it, and 3 on
+  a wrong FFT result.
  */
 
 #include <chrono>
@@ -51,7 +40,7 @@ static int checkFft(cufftResult r, const char *what) {
   return 0;
 }
 
-// One PME grid: a cubic real grid of n^3 points, with the R2C and C2R plans of GROMACS.
+// One PME grid of n^3 real points, with an R2C and a C2R plan.
 struct Grid {
   int n = 0;
   cufftHandle r2c = 0;
@@ -89,7 +78,7 @@ static int createGrid(Grid &g, int n, cudaStream_t stream) {
     return 1;
   g.input.resize(g.realCount());
   for (size_t i = 0; i < g.input.size(); i++) {
-    // Small integers: the round trip stays exact enough to compare with a tight tolerance.
+    // Small integers keep the round trip exact.
     g.input[i] = (float)((i * 7 + n) % 13) - 6.0f;
   }
   return 0;
@@ -107,7 +96,7 @@ static int destroyGrid(Grid &g) {
   return 0;
 }
 
-// R2C then C2R on the grid; returns 0 when every element equals input * n^3.
+// R2C, then C2R. Returns 0 when each element is input * n^3.
 static int roundTrip(Grid &g, cudaStream_t stream, std::vector<float> &out) {
   size_t bytes = g.realCount() * sizeof(cufftReal);
   if (check(cudaMemcpyAsync(g.real, g.input.data(), bytes, cudaMemcpyHostToDevice, stream),
