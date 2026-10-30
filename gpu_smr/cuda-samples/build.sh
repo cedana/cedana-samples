@@ -39,6 +39,51 @@ cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
 cmake --build build --parallel "$(nproc)"
 find build -type f -executable ! -name '*.so*' -exec cp {} "${OUT_DIR}/bin/" \;
 
+# Stage samples that resolve source/data files relative to their working directory.
+runtime_asset_samples=(
+    BlackScholes_nvrtc
+    HSOpticalFlow
+    binomialOptions_nvrtc
+    dwtHaar1D
+    dxtc
+    quasirandomGenerator_nvrtc
+    stereoDisparity
+)
+asset_source_root=""
+for candidate in \
+    "${WORK_DIR}/cuda-samples/Samples/5_Domain_Specific" \
+    "${WORK_DIR}/cuda-samples/cpp/5_Domain_Specific"; do
+    [ -d "${candidate}" ] && asset_source_root="${candidate}" && break
+done
+[ -n "${asset_source_root}" ] || {
+    echo "ERROR: no Domain Specific sample directory in ${SAMPLES_TAG}" >&2
+    exit 1
+}
+asset_out_root="${OUT_DIR}/assets"
+mkdir -p "${asset_out_root}"
+
+for sample in "${runtime_asset_samples[@]}"; do
+    binary="${OUT_DIR}/bin/${sample}"
+    source_dir="${asset_source_root}/${sample}"
+
+    [ -x "${binary}" ] || continue
+    [ -d "${source_dir}" ] || {
+        echo "ERROR: missing CUDA sample source directory: ${source_dir}" >&2
+        exit 1
+    }
+
+    cp -a "${source_dir}" "${asset_out_root}/"
+    mv "${binary}" "${binary}.real"
+    cat > "${binary}" <<EOF
+#!/usr/bin/env bash
+set -euo pipefail
+bin_dir="\$(cd "\$(dirname "\${BASH_SOURCE[0]}")" && pwd)"
+cd "\${bin_dir}/../assets/${sample}"
+exec "\${bin_dir}/${sample}.real" "\$@"
+EOF
+    chmod 0755 "${binary}"
+done
+
 # Fail loudly if nothing built, rather than ship an empty (falsely green) test.
 sample_count=$(find "${OUT_DIR}/bin" -maxdepth 1 -type f -executable \
     ! -name '*.so*' ! -name '*.dll' | wc -l)
