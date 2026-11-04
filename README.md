@@ -5,6 +5,10 @@ For Kubernetes examples, see examples in our helm-chart repo: https://github.com
 
 You can also use the cedana/cedana-samples docker container to run the arbitrary samples in here (which is the recommended approach - this container has everything!). 
 
+## Images
+- `cedana/cedana-samples:cuda<version>-torch<version>` (`cuda` is 12.8 with torch 2.7), `cpu` and `compbio`: everything, with the Python stacks. Built on release only.
+- `cedana/cedana-samples:cuda<version>-lite` (`cuda-lite` is 12.8): what cedana's tests run. Every workload built, with `kubernetes/` and `slurm/`, at `/cedana-samples` (and `/app`) on the CUDA base image, with a bare `python3`. PRs and main publish it as `cedana/cedana-samples-test:cuda12.8-lite-<commit>` (and `cuda12.8-lite-main`), which cedana's tests take at the commit marshal tests.
+
 ## Setup 
 Highly recommend using the requirements.txt to set up a virtualenv. 
 
@@ -21,7 +25,7 @@ source env/bin/active && pip install -r requirements.txt
 Llama.cpp is downloaded directly from its github repo and unzipped into /usr/local/bin. To run arbitrary models, run `llama-cli -hf HUGGINGFACEMODEL`. 
 
 ## Host memory and fd samples (`cpu_smr/`)
-Checkpoint/restore regression workloads for shared memory, ghost files (files unlinked while still mapped), IPC and the file descriptors servers hold. Python 3 stdlib only, no root needed. They are in both images, and in the slim `smr` image (with a bare `python3`) at `/cedana-samples/cpu_smr/...`.
+Checkpoint/restore regression workloads for shared memory, ghost files (files unlinked while still mapped), IPC and the file descriptors servers hold. Python 3 stdlib only, no root needed. They are in every image, at `/cedana-samples/cpu_smr/...` in `lite`.
 
 The gate convention, shared with the GPU samples below: each logs `READY` once set up, progress lines while running, and `MISMATCH ...` (then exits non-zero) when state is lost or corrupted (`FAIL ...` when a call fails). With a gate file (`--gate PATH` here, the last argument for the GPU samples) each runs until that file exists, checks once more, logs `PASS` and exits 0, so a test can checkpoint and restore it mid-run and then create the gate. Without one they run until killed.
 
@@ -49,7 +53,7 @@ cpu_smr/fd_zoo.py [--gate /tmp/gate] [--log /tmp/fd_zoo.log] [--dir /tmp] [--ski
 `/dev/shm` regions that don't fit in `/dev/shm` (64 MiB by default in Docker) are shrunk to fit, or skipped, with a `NOTE` line. `fd_zoo.py` skips a kind the Python or libc lacks with a `NOTE` line too.
 
 ## GPU checkpoint/restore samples (`gpu_smr/`)
-Built with the other `gpu_smr/*.cu` samples, so in every image (`/app/gpu_smr/...`, `/cedana-samples/gpu_smr/...` in `smr`). Same gate convention, with the gate path as the last argument. Each checks its own results exactly; they link only libcudart (static), and those using the driver API load `libcuda.so.1` at run time.
+Built with the other `gpu_smr/*.cu` samples, so in every image (`/app/gpu_smr/...`, `/cedana-samples/gpu_smr/...` in `lite`). Same gate convention, with the gate path as the last argument. Each checks its own results exactly; they link only libcudart (static), and those using the driver API load `libcuda.so.1` at run time.
 
 | Sample | What it exercises |
 |---|---|
@@ -57,6 +61,7 @@ Built with the other `gpu_smr/*.cu` samples, so in every image (`/app/gpu_smr/..
 | `hostmem_ipc` | A customer's pinned-memory probe. One process per GPU (exec'd, like vLLM TP workers), each reading its neighbour's device memory through CUDA IPC every step. Rank 0 first sweeps `cudaHostRegister` (aligned and not), `cuMemHostRegister`, and `cudaHostAlloc` over sizes from 4 KiB to 16 GiB, across the 8 GiB boundary, then keeps a 9 GiB registered buffer live. Logs `STEP <n>` every second. Needs about 48 GiB of RAM; runs on one GPU too (`world` 1), without the IPC. |
 | `cuda_ipc` | Two processes (fork) on one GPU sharing device buffers and interprocess events through `cudaIpcGetMemHandle`/`cudaIpcOpenMemHandle`/`cudaIpcGetEventHandle`. After the gate each exports a fresh buffer, whose handle must not collide with any exported before. A checkpoint must take both processes. |
 | `memcpy_async_pinned` | `cudaMemcpyAsync` on four streams between pinned host memory (`cudaHostAlloc`, `cudaMallocHost`, `cudaHostRegister` of malloc and of `MAP_SHARED` memory) and device buffers allocated at new addresses after earlier ones were freed; copies are still in flight while gated. About 128 MiB of pinned memory. |
+| `kv_offload_heap` | vLLM's CPU KV-cache offload (`SimpleCPUOffloadConnector`) as CUDA calls, no Python: per region `torch.zeros` (`posix_memalign(64)`) + `pin_tensor` (`cudaHostRegister(ptr, nbytes, 0)`), one region of 0x46f78 bytes served from the brk heap's top chunk (a customer's prefill worker, CED-2563) next to large mmap'd ones; every step a forward kernel, a load (`srcAccessOrder` ANY) and a store (STREAM, waiting on a compute-done event) as one `cuMemcpyBatchAsync` each from a copy thread on low-priority streams, polled with `cudaEventQuery`. Checks every block, live neighbours on the heap region's pages, and a late registration (712 on a second one); prints `THROUGHPUT` to compare with a native run. About 250 MiB of host memory. |
 | `device_globals` | `__device__`/`__constant__` scalars and arrays written by `cudaMemcpyToSymbol(Async)` and by kernels, read back by symbol and through cached `cudaGetSymbolAddress` pointers, plus a `__device__` pointer to a `cudaMalloc` buffer. The symbols must not move. |
 | `jit_modules` | Driver-API modules JIT-compiled from embedded PTX: one image loaded twice and another once with `cuModuleLoadDataEx` (identical images must not share globals), `cuLibraryLoadData`/CUkernel, per-module globals (`cuModuleGetGlobal`), 64 KiB of dynamic shared memory set by `cuFuncSetAttribute`/`cuKernelSetAttribute`, launched with `cuLaunchKernel`. |
 | `vmm_pools` | VMM (`cuMemAddressReserve`/`cuMemCreate`/`cuMemMap`/`cuMemSetAccess`), with an aliased mapping and a chunk remapped every iteration, and stream-ordered allocation (`cudaMallocAsync`/`cudaFreeAsync`) from the default pool and from a `cudaMemPoolCreate` pool with a release threshold. |
@@ -64,6 +69,6 @@ Built with the other `gpu_smr/*.cu` samples, so in every image (`/app/gpu_smr/..
 ``` sh
 gpu_smr/host_register [/tmp/gate]
 gpu_smr/hostmem_ipc [world] [/tmp/gate]   # world 0 or none: all visible GPUs
-gpu_smr/cuda_ipc [/tmp/gate]               # likewise memcpy_async_pinned, device_globals, jit_modules, vmm_pools
+gpu_smr/cuda_ipc [/tmp/gate]               # likewise memcpy_async_pinned, kv_offload_heap, device_globals, jit_modules, vmm_pools
 kubectl create -f kubernetes/gpu/cuda-2xGPU-hostmem-ipc.yaml
 ```

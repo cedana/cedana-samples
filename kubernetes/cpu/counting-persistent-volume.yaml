@@ -31,7 +31,7 @@ metadata:
 spec:
   initContainers:
     - name: init-writer
-      image: cedana/cedana-samples:cpu
+      image: cedana/cedana-samples:cuda-lite
       args:
         - -c
         - echo "Initial content from initContainer" > /mnt/pv/test.txt && echo "InitContainer finished writing."
@@ -40,7 +40,7 @@ spec:
           mountPath: /mnt/pv
   containers:
     - name: counting
-      image: cedana/cedana-samples:cpu
+      image: cedana/cedana-samples:cuda-lite
       args:
         - -c
         - |
