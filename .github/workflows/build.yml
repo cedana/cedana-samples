@@ -40,7 +40,7 @@ jobs:
   image:
     name: Image
     if: ${{ inputs.image }}
-    runs-on: runs-on=${{github.run_id}}/runner=4cpu-${{ matrix.arch }}/tag=${{ matrix.cuda_version }}-${{ matrix.torch_version }}
+    runs-on: runs-on=${{github.run_id}}/pool=4cpu-${{ matrix.arch }}/tag=${{ matrix.cuda_version }}-${{ matrix.torch_version }}
     strategy:
       fail-fast: false
       matrix:
@@ -130,7 +130,7 @@ jobs:
   image-lite:
     name: Image (lite)
     if: ${{ inputs.image_lite }}
-    runs-on: runs-on=${{github.run_id}}/runner=8cpu-${{ matrix.arch }}/tag=${{ matrix.cuda_version }}-lite
+    runs-on: runs-on=${{github.run_id}}/pool=8cpu-${{ matrix.arch }}/tag=${{ matrix.cuda_version }}-lite
     strategy:
       fail-fast: false
       matrix:
@@ -196,7 +196,7 @@ jobs:
   image-supplementary:
     name: Image
     if: ${{ inputs.image_supplementary }}
-    runs-on: runs-on=${{github.run_id}}/runner=8cpu-${{ matrix.arch }}
+    runs-on: runs-on=${{github.run_id}}/pool=8cpu-${{ matrix.arch }}
     strategy:
       fail-fast: false
       matrix:
