@@ -65,10 +65,12 @@ Built with the other `gpu_smr/*.cu` samples, so in every image (`/app/gpu_smr/..
 | `device_globals` | `__device__`/`__constant__` scalars and arrays written by `cudaMemcpyToSymbol(Async)` and by kernels, read back by symbol and through cached `cudaGetSymbolAddress` pointers, plus a `__device__` pointer to a `cudaMalloc` buffer. The symbols must not move. |
 | `jit_modules` | Driver-API modules JIT-compiled from embedded PTX: one image loaded twice and another once with `cuModuleLoadDataEx` (identical images must not share globals), `cuLibraryLoadData`/CUkernel, per-module globals (`cuModuleGetGlobal`), 64 KiB of dynamic shared memory set by `cuFuncSetAttribute`/`cuKernelSetAttribute`, launched with `cuLaunchKernel`. |
 | `vmm_pools` | VMM (`cuMemAddressReserve`/`cuMemCreate`/`cuMemMap`/`cuMemSetAccess`), with an aliased mapping and a chunk remapped every iteration, and stream-ordered allocation (`cudaMallocAsync`/`cudaFreeAsync`) from the default pool and from a `cudaMemPoolCreate` pool with a release threshold. |
+| `delta_verify` | Incremental (delta) checkpoints, CPU and GPU. Device memory (512 MiB by default), pageable host memory (256 MiB), pinned host memory written by D2H copies, pageable memory written by D2H copies, and mapped host memory written by a kernel; each tick changes a few deterministic chunks/pages of each, so successive dumps differ by little. When it stops it replays every tick into fresh buffers and compares all five, naming the first differing buffer and offset. `DELTA_SELFTEST=1` corrupts one byte of each first (five `MISMATCH` lines). |
 
 ``` sh
 gpu_smr/host_register [/tmp/gate]
 gpu_smr/hostmem_ipc [world] [/tmp/gate]   # world 0 or none: all visible GPUs
+gpu_smr/delta_verify [dev_mib] [host_mib] [/tmp/gate]   # env DELTA_TICK_MS, DELTA_NO_MAPPED, DELTA_SELFTEST
 gpu_smr/cuda_ipc [/tmp/gate]               # likewise memcpy_async_pinned, kv_offload_heap, device_globals, jit_modules, vmm_pools
 kubectl create -f kubernetes/gpu/cuda-2xGPU-hostmem-ipc.yaml
 ```
