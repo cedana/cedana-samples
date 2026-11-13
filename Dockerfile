@@ -70,7 +70,8 @@ COPY kubernetes/ /app/kubernetes/
 
 # The lite image's /cedana-samples: the built workloads, without the
 # cuda-samples that samples.txt doesn't list. Its CUDA workloads must run on
-# the CUDA base image (libcudart only), as a customer's would.
+# the CUDA base image (libcudart only), as a customer's would. The cufft_*
+# samples also need libcufft, which cedana's CUDA test image has (CED-2542).
 FROM builder AS lite-files
 RUN <<'EOT'
 set -eu
@@ -81,6 +82,9 @@ extra_libs() { readelf -d "$1" | sed -n 's/.*Shared library: \[\(.*\)\]/\1/p' | 
 for src in /app/gpu_smr/*.cu; do
     bin="${src%.cu}"
     extra="$(extra_libs "${bin}")"
+    case "${bin##*/}" in
+        cufft_*) extra="$(echo "${extra}" | sed -E 's/libcufft\.so\.[0-9]+ ?//')" ;;
+    esac
     if [ -n "${extra}" ]; then echo "ERROR: ${bin} needs ${extra}" >&2; exit 1; fi
 done
 

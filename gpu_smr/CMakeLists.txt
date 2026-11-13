@@ -25,4 +25,8 @@ foreach(WORKLOAD ${WORKLOADS})
   get_filename_component(WORKLOAD_NAME ${WORKLOAD} NAME_WE)
   add_executable(${WORKLOAD_NAME} ${WORKLOAD})
   target_link_libraries(${WORKLOAD_NAME} ${CUDA_LIBRARIES})
+  # cufft_* samples also link libcufft.
+  if(WORKLOAD_NAME MATCHES "^cufft_")
+    target_link_libraries(${WORKLOAD_NAME} ${CUDA_CUFFT_LIBRARIES})
+  endif()
 endforeach()
