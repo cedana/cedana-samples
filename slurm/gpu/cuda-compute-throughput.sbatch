@@ -5,7 +5,8 @@
 #SBATCH --cpus-per-task=2
 #SBATCH --mem=4G
 #SBATCH --gres=gpu:1
-#SBATCH --export=CEDANA_ENABLE=1
+#SBATCH --cedana
+#SBATCH --signal=B:USR1@0
 
 # Workload: CUDA Compute Throughput (SAXPY)
 # Description: Measures GPU compute throughput in GFLOP/s using SAXPY operation

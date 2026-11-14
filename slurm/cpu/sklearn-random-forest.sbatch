@@ -4,7 +4,8 @@
 #SBATCH --error=sklearn-rf-%j.err
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=8G
-#SBATCH --export=CEDANA_ENABLE=1
+#SBATCH --cedana
+#SBATCH --signal=B:USR1@0
 
 # Workload: Scikit-learn Random Forest Training
 # Description: Trains Random Forest models on synthetic datasets with varying sizes

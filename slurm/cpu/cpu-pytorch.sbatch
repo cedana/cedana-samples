@@ -4,7 +4,8 @@
 #SBATCH --error=cpu-pytorch-%j.err
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=4G
-#SBATCH --export=CEDANA_ENABLE=1
+#SBATCH --cedana
+#SBATCH --signal=B:USR1@0
 
 # Workload: CPU PyTorch Linear Model Training
 # Description: Simple linear regression with synthetic data using PyTorch (CPU)
