@@ -7,7 +7,7 @@ spec:
   runtimeClassName: cedana # required for GPU C/R support (use nvidia for native)
   containers:
     - name: cuda-vector-add
-      image: cedana/cedana-samples:cuda
+      image: cedana/cedana-samples:cuda-lite
       args:
         - -c
         - gpu_smr/vector_add_multi_gpu

@@ -1,7 +1,8 @@
 cmake_minimum_required(VERSION 3.8 FATAL_ERROR)
 
 if(NOT DEFINED CMAKE_CUDA_ARCHITECTURES)
-  set(CMAKE_CUDA_ARCHITECTURES 70) # minimum Volta
+  # SASS from Volta to Hopper, PTX for Hopper (the Dockerfile sets it per CUDA version)
+  set(CMAKE_CUDA_ARCHITECTURES "70-real;75-real;80-real;86-real;89-real;90")
 endif()
 
 project(cedana-bench LANGUAGES CXX CUDA)
@@ -24,4 +25,8 @@ foreach(WORKLOAD ${WORKLOADS})
   get_filename_component(WORKLOAD_NAME ${WORKLOAD} NAME_WE)
   add_executable(${WORKLOAD_NAME} ${WORKLOAD})
   target_link_libraries(${WORKLOAD_NAME} ${CUDA_LIBRARIES})
+  # cufft_* samples also link libcufft.
+  if(WORKLOAD_NAME MATCHES "^cufft_")
+    target_link_libraries(${WORKLOAD_NAME} ${CUDA_CUFFT_LIBRARIES})
+  endif()
 endforeach()

@@ -23,6 +23,26 @@ on:
         description: "Post summary to Slack"
         required: false
         default: false
+      image:
+        type: boolean
+        description: "Publish the Docker image (built by build.yml's image)"
+        default: true
+      image_supplementary:
+        type: boolean
+        description: "Publish the supplementary Docker images"
+        default: true
+      image_lite:
+        type: boolean
+        description: "Publish the lite image"
+        default: true
+      lite_cuda_versions:
+        type: string
+        description: "CUDA versions of the lite image (JSON list)"
+        default: '["12.2", "12.4", "12.8", "13.2"]'
+      image_name:
+        type: string
+        description: "Name of the Docker image (build.yml's image_name)"
+        default: cedana/cedana-samples
 
 jobs:
   github:
@@ -61,7 +81,7 @@ jobs:
   dockerhub:
     name: DockerHub
     runs-on: ubuntu-latest
-    if: ${{ inputs.dockerhub }}
+    if: ${{ inputs.dockerhub && inputs.image }}
     strategy:
       fail-fast: false
       matrix:
@@ -122,36 +142,23 @@ jobs:
         run: |
           docker buildx imagetools inspect ${{ steps.check_dirs.outputs.IMAGE_NAME }}:${{ steps.meta.outputs.version }}
 
-  dockerhub-smr:
-    name: DockerHub (smr)
+  # The lite image, by CUDA version and by commit: cedana's tests take a PR's
+  # (or main's) at its commit, cuda<version>-lite-<sha>.
+  dockerhub-lite:
+    name: DockerHub (lite)
     runs-on: ubuntu-latest
-    if: ${{ inputs.dockerhub }}
+    if: ${{ inputs.dockerhub && inputs.image_lite }}
     strategy:
       fail-fast: false
       matrix:
-        cuda_version:
-          - 12.2
-          - 12.4
-          - 12.8
-          - 13.2
+        cuda_version: ${{ fromJSON(inputs.lite_cuda_versions) }}
     steps:
       - name: Download digests
         uses: actions/download-artifact@v4
         with:
           path: /tmp/digests
-          pattern: digests-smr-${{ matrix.cuda_version }}-*
+          pattern: digests-lite-${{ matrix.cuda_version }}-*
           merge-multiple: true
-
-      - name: Download image name
-        uses: actions/download-artifact@v4
-        with:
-          path: /tmp/image-name
-          name: image-name
-          merge-multiple: true
-
-      - name: Check directories and set variables
-        id: check_dirs
-        run: echo "IMAGE_NAME=$(cat /tmp/image-name/name.txt)" >> $GITHUB_OUTPUT
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -166,25 +173,27 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ steps.check_dirs.outputs.IMAGE_NAME }}
+          images: ${{ inputs.image_name }}
           tags: |
-            type=raw,value=cuda${{ matrix.cuda_version }}-smr
-            type=raw,value=cuda${{ matrix.cuda_version }}-smr-${{ github.head_ref || github.ref_name }}
-            ${{ matrix.cuda_version == '12.8' && 'type=raw,value=cuda-smr' || '' }}
+            type=raw,value=cuda${{ matrix.cuda_version }}-lite
+            type=raw,value=cuda${{ matrix.cuda_version }}-lite-${{ github.head_ref || github.ref_name }}
+            type=raw,value=cuda${{ matrix.cuda_version }}-lite-${{ github.event.pull_request.head.sha || github.sha }}
+            ${{ matrix.cuda_version == '12.8' && 'type=raw,value=cuda-lite' || '' }}
 
       - name: Create manifest list and push
         working-directory: /tmp/digests
         run: |
           docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
-            $(printf '${{ steps.check_dirs.outputs.IMAGE_NAME }}@sha256:%s ' *)
+            $(printf '${{ inputs.image_name }}@sha256:%s ' *)
 
       - name: Inspect image
         run: |
-          docker buildx imagetools inspect ${{ steps.check_dirs.outputs.IMAGE_NAME }}:${{ steps.meta.outputs.version }}
+          docker buildx imagetools inspect ${{ inputs.image_name }}:${{ steps.meta.outputs.version }}
 
   dockerhub-supplementary:
     name: DockerHub
     runs-on: ubuntu-latest
+    if: ${{ inputs.dockerhub && inputs.image_supplementary }}
     strategy:
       matrix:
         image:
@@ -241,7 +250,7 @@ jobs:
   post-summary:
     name: Post Summary
     runs-on: ubuntu-latest
-    needs: [dockerhub, dockerhub-smr, dockerhub-supplementary, github]
+    needs: [dockerhub, dockerhub-lite, dockerhub-supplementary, github]
     if: inputs.post_summary
     steps:
       - name: Checkout
