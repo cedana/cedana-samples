@@ -1,0 +1,79 @@
+name: CUDA samples (simulated H100)
+
+# Optional, non-required check. The runners have no GPU, so this builds a few
+# of the self-checking gpu_smr samples and runs them on a simulated NVIDIA H100
+# (https://github.com/pantheongpu/pantheonsim). Each sample runs its default
+# mode (no gate file), checks its own results and prints PASS. A simulator does
+# not model timing, checkpoint/restore or every hardware detail, so this
+# complements testing on a real GPU and does not replace it.
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "gpu_smr/*.cu"
+      - "gpu_smr/*.cuh"
+      - "gpu_smr/CMakeLists.txt"
+      - ".github/workflows/gpu-sim.yml"
+
+concurrency:
+  group: gpu-sim-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  SAMPLES: device_globals reset_stream reset_exit cufft_replan host_register memcpy_async_pinned event_race
+
+jobs:
+  cuda-h100:
+    name: gpu_smr samples (simulated H100)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        with:
+          persist-credentials: false
+
+      - name: Set up the simulated GPU and CUDA toolkit
+        uses: pantheongpu/setup-pantheonsim@656f502ef4782d94d34d8ddd368e333960609639 # v0.1.8
+        with:
+          gpu: nvidia/h100
+          cuda-toolkit: "13.0"
+
+      # PTX only (90-virtual) and a shared cudart: the simulator runs PTX and
+      # needs libcudart.so. FindCUDA links the static runtime unless told not to.
+      - name: Configure
+        run: |
+          cmake -S gpu_smr -B build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_CUDA_COMPILER=/usr/local/cuda-13.0/bin/nvcc \
+            -DCMAKE_CUDA_ARCHITECTURES=90-virtual \
+            -DCMAKE_CUDA_RUNTIME_LIBRARY=Shared \
+            -DCUDA_TOOLKIT_ROOT_DIR=/usr/local/cuda-13.0 \
+            -DCUDA_USE_STATIC_CUDA_RUNTIME=OFF
+
+      - name: Build
+        run: cmake --build build -j3 --target $SAMPLES
+
+      # Each sample exits non-zero on a wrong result. The extra checks fail
+      # the job if the simulated GPU was not used or a sample did not reach PASS.
+      - name: Run
+        env:
+          EVENT_RACE_ITERS: "300"
+        run: |
+          mkdir -p logs
+          for s in $SAMPLES; do
+            echo "::group::$s"
+            vgpu run --gpu nvidia/h100 "./build/$s" 2>&1 | tee "logs/$s.log"
+            rc=${PIPESTATUS[0]}
+            echo "::endgroup::"
+            if [ "$rc" -ne 0 ]; then echo "::error::$s exited with $rc"; exit 1; fi
+            if ! grep -q 'virtual GPU platform initialized: 1 x nvidia/h100' "logs/$s.log"; then
+              echo "::error::$s did not run on the simulated H100"; exit 1
+            fi
+            if ! grep -qx 'PASS' "logs/$s.log" || grep -qE 'MISMATCH|FAIL' "logs/$s.log"; then
+              echo "::error::$s did not report PASS"; exit 1
+            fi
+          done
