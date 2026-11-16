@@ -37,4 +37,4 @@ if ! python3 -c "import torch" 2>/dev/null; then
     echo "PyTorch installed successfully"
 fi
 
-python3 gpu_smr/pytorch/training/test.py
+python3 -u gpu_smr/pytorch/training/test.py
