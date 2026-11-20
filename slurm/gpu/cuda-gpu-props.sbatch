@@ -5,7 +5,8 @@
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=1G
 #SBATCH --gres=gpu:1
-#SBATCH --export=CEDANA_ENABLE=1
+#SBATCH --cedana
+#SBATCH --signal=B:USR1@0
 
 # Workload: CUDA GPU Properties
 # Description: Displays detailed information about available CUDA devices
