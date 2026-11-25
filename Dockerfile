@@ -33,6 +33,11 @@ ARG CUDA_VERSION
 COPY gpu_smr/cuda-samples/build.sh /build.sh
 RUN /build.sh "${CUDA_VERSION}" /cuda-samples && mkdir -p /cuda-samples/bin
 
+# Go workloads, static (CGO disabled), so they run on any base image.
+FROM golang:1.25-bookworm AS go-builder
+COPY cpu_smr/go-counting/ /src/go-counting/
+RUN cd /src/go-counting && CGO_ENABLED=0 go build -trimpath -o go-counting .
+
 FROM devel AS builder
 ARG CUDA_VERSION
 WORKDIR /app
@@ -66,6 +71,7 @@ find /app -name "*.a" -delete
 EOT
 
 COPY --from=cuda-samples /cuda-samples/bin/ /app/gpu_smr/cuda-samples/bin/
+COPY --from=go-builder /src/go-counting/go-counting /app/cpu_smr/go-counting/go-counting
 COPY kubernetes/ /app/kubernetes/
 
 # The lite image's /cedana-samples: the built workloads, without the

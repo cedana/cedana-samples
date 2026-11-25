@@ -4,7 +4,8 @@
 #SBATCH --error=numpy-matrix-%j.err
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=16G
-#SBATCH --export=CEDANA_ENABLE=1
+#SBATCH --cedana
+#SBATCH --signal=B:USR1@0
 
 # Workload: NumPy/SciPy Matrix Operations
 # Description: Performs computationally intensive matrix operations
