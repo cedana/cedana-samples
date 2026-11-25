@@ -4,7 +4,8 @@
 #SBATCH --error=xgboost-train-%j.err
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=8G
-#SBATCH --export=CEDANA_ENABLE=1
+#SBATCH --cedana
+#SBATCH --signal=B:USR1@0
 
 # Workload: XGBoost CPU Training
 # Description: Trains gradient boosting models on synthetic datasets
