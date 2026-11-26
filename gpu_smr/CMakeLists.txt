@@ -30,3 +30,10 @@ foreach(WORKLOAD ${WORKLOADS})
     target_link_libraries(${WORKLOAD_NAME} ${CUDA_CUFFT_LIBRARIES})
   endif()
 endforeach()
+
+# PTX only: every GPU JIT-compiles it when it loads, as with an app that ships no native code
+# for the GPU. That needs a driver at least as new as the CUDA that built it, so on an older
+# node it runs on the image's CUDA forward compatibility libcuda (CED-2566).
+add_executable(mem-throughput-saxpy-loop-ptx mem-throughput-saxpy-loop.cu)
+target_link_libraries(mem-throughput-saxpy-loop-ptx ${CUDA_LIBRARIES})
+set_target_properties(mem-throughput-saxpy-loop-ptx PROPERTIES CUDA_ARCHITECTURES 75-virtual)
